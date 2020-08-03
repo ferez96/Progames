@@ -1,0 +1,25 @@
+# env
+.env
+.venv
+env/
+env*
+
+# build
+dist/
+build/
+*.egg
+*.egg-info/
+
+*.py[co]
+__pycache__
+.cache/
+.pytest_cache/
+.idea/
+docs/_build/
+
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+*,cover
