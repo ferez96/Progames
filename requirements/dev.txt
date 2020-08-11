@@ -10,10 +10,10 @@ babel==2.8.0              # via sphinx
 certifi==2020.6.20        # via requests
 chardet==3.0.4            # via requests
 click==7.1.2              # via pip-tools
+coverage==5.2.1           # via -r requirements/tests.in
 docutils==0.16            # via sphinx
 idna==2.10                # via requests
 imagesize==1.2.0          # via sphinx
-importlib-metadata==1.7.0  # via pallets-sphinx-themes, pluggy, pytest
 iniconfig==1.0.1          # via pytest
 jinja2==2.11.2            # via sphinx
 markupsafe==1.1.1         # via jinja2
@@ -40,7 +40,6 @@ sphinxcontrib-qthelp==1.0.3  # via sphinx
 sphinxcontrib-serializinghtml==1.1.4  # via sphinx
 toml==0.10.1              # via pytest
 urllib3==1.25.10          # via requests
-zipp==3.1.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

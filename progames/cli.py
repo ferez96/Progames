@@ -6,22 +6,21 @@ import sys
 from click import Group, option, argument
 
 cli = Group(help="""Welcome to Progames""")
-match = Group()
-cli.add_command(match, "match")
+game = Group()
+cli.add_command(game, "game")
 
 
-@match.command()
-@argument("game")
-def start(game):
-    """Start new match"""
-    print("Mock", game)
+@cli.command()
+def start():
+    """Start server"""
+    print("Server started")
 
 
-@match.command()
-@argument("file")
-def visualize(file):
-    """Visualize match"""
-    print(file)
+@game.command("install")
+@argument("uri")
+def _import(uri):
+    """Import game"""
+    print("install game from:", uri)
 
 
 def main():
