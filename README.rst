@@ -8,7 +8,7 @@ clone from git hub
 
 .. code-block::
 
-    git clone git@...
+    git clone git@github.com:ferez96/Progames.git
 
 install
 
@@ -25,4 +25,9 @@ Usages
 Contribution
 ------------
 
-contact me
+Feel free to create Issues & Pull Requests
+
+Or contact me via: Facebook_
+
+
+.. _Facebook: https://www.facebook.com/ferez.96/
