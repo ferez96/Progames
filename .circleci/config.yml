@@ -10,6 +10,7 @@ jobs:
       - checkout
       - run: pip install pip-tools
       - run: pip-compile requirements/tests.in > ./requirements.txt
+      - run: cat ./requirements.txt
       - python/load-cache
       - python/install-deps
       - python/save-cache
