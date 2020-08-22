@@ -8,10 +8,9 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - python/load-cache
       - run: pip install pip-tools
-      - run: pip-compile requirements/tests.in
-      - run: cp requirements/test.txt ./requirements.txt
+      - run: pip-compile requirements/tests.in > ./requirements.txt
+      - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
