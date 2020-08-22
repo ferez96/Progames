@@ -9,8 +9,8 @@ jobs:
     steps:
       - checkout
       - run: pip install pip-tools
-      - run: pip-compile requirements/tests.in > ./requirements.txt
-      - run: cat ./requirements.txt
+      - run: pip-compile requirements/tests.in
+      - run: mv requirements/test.txt requirements.txt
       - python/load-cache
       - python/install-deps
       - python/save-cache
