@@ -4,7 +4,7 @@ Programming Games Contests Framework
 .. image:: https://circleci.com/gh/ferez96/Progames.svg?style=svg
     :target: https://circleci.com/gh/ferez96/Progames
 
-.. image:: https://readthedocs.org/projects/pip/badge/?version=latest&style=plastic
+.. image:: https://readthedocs.org/projects/progames/badge/?version=latest&style=plastic
     :target: https://progames.readthedocs.io/en/latest/
 
 Installation
