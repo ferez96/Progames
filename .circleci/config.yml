@@ -6,7 +6,7 @@ orbs:
 jobs:
   test:
     executor: python/default
-    env:
+    environment:
       COVERAGE_RCFILE: .coveragerc
     steps:
       - checkout
