@@ -13,12 +13,18 @@ jobs:
             pip install pip-tools
             pip-compile requirements/tests.in
             mv requirements/tests.txt requirements.txt
+          name: Generate requirements.txt
       - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
           command: python -m pytest
           name: Test
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+          destination: tr1
 
 workflows:
   main:
