@@ -2,6 +2,7 @@
 
 [run]
 omit =
-        *__init__*
-        */usr/local/lib*
-        *tests*
+    *__init__*
+    */usr/local/lib*
+    *tests*
+    *.local/lib/*
