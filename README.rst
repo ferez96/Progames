@@ -1,6 +1,9 @@
 Programming Games Contests Framework
 ====================================
 
+.. image:: https://circleci.com/gh/ferez96/Progames.svg?style=svg
+    :target: https://circleci.com/gh/ferez96/Progames
+
 Installation
 ------------
 
