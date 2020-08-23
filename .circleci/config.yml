@@ -11,19 +11,18 @@ jobs:
       - run:
           name: Setup Tests
           command: |
-            pip install pip-tools
-            pip-compile requirements/tests.in
+            pip install --user pip-tools coverage
+            $HOME/.local/bin/pip-compile requirements/tests.in
             mv requirements/tests.txt requirements.txt
-            echo $HOME
       - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
           name: Run Tests
           command: |
-            coverage run -m pytest
-            coverage report
-            coverage html
+            $HOME/.local/bin/coverage run -m pytest
+            $HOME/.local/bin/coverage report
+            $HOME/.local/bin/coverage html
       - store_artifacts:
           path: htmlcov
 
