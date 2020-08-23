@@ -6,7 +6,7 @@ orbs:
 jobs:
   test:
     executor: python/default
-    working_directory: .
+#    working_directory: ~/Progames
     steps:
       - checkout
       - run:
