@@ -9,16 +9,16 @@ Installation
 
 clone from git hub
 
-.. code-block::
+::
 
     git clone git@github.com:ferez96/Progames.git
 
 install
 
-.. code-block::
+::
 
-    > cd Progames/
-    > pip install .
+    cd Progames/
+    pip install .
 
 
 Usages
