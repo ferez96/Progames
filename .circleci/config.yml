@@ -1,0 +1,37 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  test:
+    executor: python/default
+    steps:
+      - checkout
+      - run:
+          name: Setup Tests
+          command: |
+            pip install --user pip-tools coverage
+            $HOME/.local/bin/pip-compile requirements/tests.in
+            mv requirements/tests.txt requirements.txt
+      - python/load-cache
+      - python/install-deps
+      - python/save-cache
+      - run:
+          name: Run Tests
+          command: |
+            $HOME/.local/bin/coverage run -m pytest
+            $HOME/.local/bin/coverage report
+            $HOME/.local/bin/coverage html
+      - store_artifacts:
+          path: htmlcov
+
+workflows:
+  main:
+    jobs:
+      - test:
+        filters:
+          branches:
+            ignore:
+              - develop
+              - /features\/.*/
