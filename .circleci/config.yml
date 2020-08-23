@@ -6,12 +6,15 @@ orbs:
 jobs:
   test:
     executor: python/default
-    working_directory: ~/Progames
+    working_directory: .
     steps:
       - checkout
-      - run: pip install pip-tools
-      - run: pip-compile requirements/tests.in
-      - run: mv requirements/tests.txt requirements.txt
+      - run:
+          command: |
+            ls
+            pip install pip-tools
+            pip-compile requirements/tests.in
+            mv requirements/tests.txt requirements.txt
       - python/load-cache
       - python/install-deps
       - python/save-cache
