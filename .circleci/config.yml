@@ -6,12 +6,10 @@ orbs:
 jobs:
   test:
     executor: python/default
-#    working_directory: ~/Progames
     steps:
       - checkout
       - run:
           command: |
-            ls
             pip install pip-tools
             pip-compile requirements/tests.in
             mv requirements/tests.txt requirements.txt
@@ -19,7 +17,7 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: pytest
+          command: python -m pytest
           name: Test
 
 workflows:
