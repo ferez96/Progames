@@ -6,6 +6,8 @@ orbs:
 jobs:
   test:
     executor: python/default
+    env:
+      COVERAGE_RCFILE: .coveragerc
     steps:
       - checkout
       - run:
@@ -20,7 +22,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            $HOME/.local/bin/coverage run -m pytest --rcfile=.coveragerc
+            $HOME/.local/bin/coverage run -m pytest
             $HOME/.local/bin/coverage report
             $HOME/.local/bin/coverage html
       - store_artifacts:
