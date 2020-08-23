@@ -9,22 +9,23 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Setup Tests
           command: |
             pip install pip-tools
             pip-compile requirements/tests.in
             mv requirements/tests.txt requirements.txt
-          name: Generate requirements.txt
+            echo $HOME
       - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
-          command: python -m pytest
-          name: Test
-      - store_test_results:
-          path: test-results
+          name: Run Tests
+          command: |
+            $HOME/.local/bin/coverage run -m pytest
+            $HOME/.local/bin/coverage report
+            $HOME/.local/bin/coverage html  # open htmlcov/index.html in a browser
       - store_artifacts:
-          path: test-results
-          destination: tr1
+          path: htmlcov
 
 workflows:
   main:
