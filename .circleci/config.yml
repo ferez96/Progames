@@ -6,6 +6,7 @@ orbs:
 jobs:
   test:
     executor: python/default
+    working_directory: ~/Progames
     steps:
       - checkout
       - run: pip install pip-tools
