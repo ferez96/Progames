@@ -1,11 +1,5 @@
 version: 2.1
 
-pr_only: &pr_only
-  filters:
-    branches:
-      only:
-      - /pull\/.*/
-
 orbs:
   python: circleci/python@0.2.1
 
@@ -33,15 +27,10 @@ jobs:
           path: htmlcov
 
 workflows:
-
   main:     
     jobs:
       - test:
         branches:
-          only:
-          - master
+          ignore:
+          - develop          
 
-  pull-requests:    
-    jobs:
-      - test:
-        <<: *pr_only
