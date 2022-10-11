@@ -30,16 +30,20 @@ workflows:
 
   main:
     triggers:
-      branches:
-        only:
-        - master
+    - schedule:
+        filters:
+          branches:
+            only:
+            - master
     jobs:
       - test
 
   pull-requests:
     triggers:
-      branches:
-        only:
-        - /pull\/.*/
+    - schedule:
+        filters:
+          branches:
+            only:
+            - /pull\/.*/
     jobs:
       - test
