@@ -1,3 +1,5 @@
+click
+flask
 coverage
 pytest
 python-dotenv

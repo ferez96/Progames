@@ -70,3 +70,6 @@ napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_type_aliases = None
+
+# Sphinx expects the master doc to be `contents`
+master_doc = 'index'
