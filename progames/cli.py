@@ -10,10 +10,13 @@ game = Group()
 cli.add_command(game, "game")
 
 
+
 @cli.command()
 def start():
     """Start server"""
-    print("Server started")
+    from progames.server import run
+
+    run()
 
 
 @game.command("install")
