@@ -11,9 +11,7 @@ jobs:
       - run:
           name: Setup Tests
           command: |
-            pip install --user pip-tools coverage
-            $HOME/.local/bin/pip-compile requirements/tests.in
-            mv requirements/tests.txt requirements.txt
+            pip install --user pip-tools coverage python-dotenv pytest
       - python/load-cache
       - python/install-deps
       - python/save-cache
@@ -29,11 +27,19 @@ jobs:
           path: htmlcov
 
 workflows:
+
   main:
+    triggers:
+      branches:
+        only:
+        - master
     jobs:
-      - test:
-        filters:
-          branches:
-            ignore:
-              - develop
-              - /features\/.*/
+      - test
+
+  pull-requests:
+    triggers:
+      branches:
+        only:
+        - /pull\/.*/
+    jobs:
+      - test
