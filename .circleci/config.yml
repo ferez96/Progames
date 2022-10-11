@@ -17,7 +17,7 @@ jobs:
       - run:
           name: Setup Tests
           command: |
-            pip install --user pip-tools coverage python-dotenv pytest
+            pip install --user pip-tools coverage python-dotenv pytest            
       - python/load-cache
       - python/install-deps
       - python/save-cache
