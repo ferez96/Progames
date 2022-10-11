@@ -8,15 +8,21 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - run:
-          name: Setup Tests
-          command: |
-            pip install --user pip-tools coverage python-dotenv pytest            
       - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
-          name: Run Tests
+          name: Run Tests          
+          command: python -m pytest                       
+  coverage:
+    executor: python/default
+    steps:
+      - checkout
+      - python/load-cache
+      - python/install-deps
+      - python/save-cache
+      - run:
+          name: Run Tests (coverage)
           environment:
             COVERAGE_RCFILE: .coveragerc
           command: |
@@ -25,12 +31,23 @@ jobs:
             $HOME/.local/bin/coverage html
       - store_artifacts:
           path: htmlcov
+  build:
+    executor: python/default
+    steps:
+      - checkout
+      - run:
+          name: Setup
+          command: pip install --user build
+      - run:
+          name: Build
+          command: python -m build
 
 workflows:
   main:     
     jobs:
-      - test:
+      - test
+      - coverage:
         branches:
-          ignore:
-          - develop          
-
+          only:
+          - master
+      - docker
