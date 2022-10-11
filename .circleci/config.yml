@@ -38,9 +38,11 @@ jobs:
 workflows:
   main:     
     jobs:
-      - python/test
+      - python/test:
+          test-tool: pytest
       - coverage:
-        branches:
-          only:
-          - master
+        filters:
+          branches:
+            only:
+            - master
       - build
