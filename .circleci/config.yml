@@ -28,12 +28,7 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - run:
-          name: Setup
-          command: pip install --user build
-      - run:
-          name: Build
-          command: python -m build
+      - python/dist
 
 workflows:
   main:     
