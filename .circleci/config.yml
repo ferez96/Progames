@@ -1,19 +1,9 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@0.2.1
+  python: circleci/python@2.1.1
 
 jobs:
-  test:
-    executor: python/default
-    steps:
-      - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
-      - run:
-          name: Run Tests          
-          command: python -m pytest                       
   coverage:
     executor: python/default
     steps:
@@ -22,7 +12,7 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          name: Run Tests (coverage)
+          name: Run tests with coverage
           environment:
             COVERAGE_RCFILE: .coveragerc
           command: |
@@ -45,7 +35,7 @@ jobs:
 workflows:
   main:     
     jobs:
-      - test
+      - python/test
       - coverage:
         branches:
           only:
