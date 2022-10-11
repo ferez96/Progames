@@ -1,0 +1,5 @@
+coverage
+pytest
+python-dotenv
+Pallets-Sphinx-Themes
+Sphinx
