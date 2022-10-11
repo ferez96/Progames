@@ -22,7 +22,7 @@ dev-init-db: venv-dev
 	. ./venv-dev/bin/activate; flask --app progames.server init-db
 
 
-run-dev-server: venv-dev
+dev-run-server: venv-dev
 	. ./venv-dev/bin/activate; FLASK_RUN_PORT=3000 flask --app progames.server --debug run
 
 
