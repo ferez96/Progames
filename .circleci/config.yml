@@ -5,6 +5,8 @@ orbs:
 
 jobs:
   coverage:
+    condition:
+      equal: [ master, << pipeline.git.branch >> ]
     executor: python/default
     steps:
       - checkout
@@ -40,9 +42,5 @@ workflows:
     jobs:
       - python/test:
           test-tool: pytest
-      - coverage:
-        filters:
-          branches:
-            only:
-            - master
+      - coverage
       - build
