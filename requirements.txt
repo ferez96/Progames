@@ -1,6 +1,6 @@
+build
 click
 flask
-coverage
 pytest
 python-dotenv
 Pallets-Sphinx-Themes

@@ -1,36 +1,45 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@0.2.1
+  python: circleci/python@2.1.1
 
 jobs:
-  test:
+  coverage:
     executor: python/default
     steps:
       - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - python/install-packages:
+          args: coverage
+          pkg-manager: pip
+          pypi-cache: false
       - run:
-          name: Setup Tests
-          command: |
-            pip install --user pip-tools coverage python-dotenv pytest            
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
-      - run:
-          name: Run Tests
+          name: Run tests with coverage
           environment:
             COVERAGE_RCFILE: .coveragerc
           command: |
-            $HOME/.local/bin/coverage run -m pytest
-            $HOME/.local/bin/coverage report
-            $HOME/.local/bin/coverage html
+            coverage run -m pytest
+            coverage report
+            coverage html
       - store_artifacts:
           path: htmlcov
+  build:
+    executor: python/default
+    steps:
+      - checkout
+      - python/dist
+      - store_artifacts:
+          path: dist
 
 workflows:
   main:     
     jobs:
-      - test:
-        branches:
-          ignore:
-          - develop          
-
+      - python/test:
+          test-tool: pytest
+      - coverage:
+          filters:
+            branches:
+              only:
+              - master
+      - build
