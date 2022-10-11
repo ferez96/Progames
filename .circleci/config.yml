@@ -1,5 +1,11 @@
 version: 2.1
 
+pr_only: &pr_only
+  filters:
+    branches:
+      only:
+      - /pull\/.*/
+
 orbs:
   python: circleci/python@0.2.1
 
@@ -28,22 +34,14 @@ jobs:
 
 workflows:
 
-  main:
-    triggers:
-    - schedule:
-        filters:
-          branches:
-            only:
-            - master
+  main:     
     jobs:
-      - test
+      - test:
+        branches:
+          only:
+          - master
 
-  pull-requests:
-    triggers:
-    - schedule:
-        filters:
-          branches:
-            only:
-            - /pull\/.*/
+  pull-requests:    
     jobs:
-      - test
+      - test:
+        <<: *pr_only
