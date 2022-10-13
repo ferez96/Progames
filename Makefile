@@ -18,6 +18,7 @@ test: venv
 
 
 
+
 dev-init-db: venv-dev
 	. ./venv-dev/bin/activate; flask --app progames.server init-db
 
