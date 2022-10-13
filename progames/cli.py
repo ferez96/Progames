@@ -13,10 +13,9 @@ cli.add_command(game, "game")
 
 @cli.command()
 def start():
-    """Start server"""
-    from progames.server import run
-
-    run()
+    """Start http server"""
+    from progames.server import create_app
+    create_app().run("localhost", 3000)
 
 
 @game.command("install")

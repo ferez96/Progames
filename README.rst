@@ -27,6 +27,18 @@ install
 Usages
 ------
 
+init db
+
+::
+
+    flask --app progames.server init-db
+
+start http server
+
+::
+
+    flask --app progames.server run
+
 
 Contribution
 ------------

@@ -36,10 +36,15 @@ workflows:
   main:     
     jobs:
       - python/test:
+          pkg-manager: pip
           test-tool: pytest
       - coverage:
+          requires:
+          - python/test
           filters:
             branches:
               only:
               - master
-      - build
+      - build:
+          requires:
+          - python/test

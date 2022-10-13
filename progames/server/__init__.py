@@ -36,8 +36,3 @@ def create_app(test_config=None) -> Flask:
         return render_template('index.html')        
 
     return app
-
-
-def run(host="localhost", port=3000):
-    app = create_app()
-    app.run(host, port)
