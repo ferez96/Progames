@@ -4,47 +4,53 @@ orbs:
   python: circleci/python@2.1.1
 
 jobs:
+  test:
+    executor: python/default
+    steps:
+    - checkout
+    - run:
+        name: Test
+        command: |
+          make test
   coverage:
     executor: python/default
     steps:
-      - checkout
-      - python/install-packages:
-          pkg-manager: pip
-      - python/install-packages:
-          args: coverage
-          pkg-manager: pip
-          pypi-cache: false
-      - run:
-          name: Run tests with coverage
-          environment:
-            COVERAGE_RCFILE: .coveragerc
-          command: |
-            coverage run -m pytest
-            coverage report
-            coverage html
-      - store_artifacts:
-          path: htmlcov
+    - checkout
+    - python/install-packages:
+        pkg-manager: pip
+    - python/install-packages:
+        args: coverage
+        pkg-manager: pip
+        pypi-cache: false
+    - run:
+        name: Run tests with coverage
+        environment:
+          COVERAGE_RCFILE: .coveragerc
+        command: |
+          coverage run -m pytest
+          coverage report
+          coverage html
+    - store_artifacts:
+        path: htmlcov
   build:
     executor: python/default
     steps:
-      - checkout
-      - python/dist
-      - store_artifacts:
-          path: dist
+    - checkout
+    - python/dist
+    - store_artifacts:
+        path: dist
 
 workflows:
   main:     
     jobs:
-      - python/test:
-          pkg-manager: pip
-          test-tool: pytest
-      - coverage:
-          requires:
-          - python/test
-          filters:
-            branches:
-              only:
-              - master
-      - build:
-          requires:
-          - python/test
+    - test
+    - coverage:
+        requires:
+        - test
+        filters:
+          branches:
+            only:
+            - master
+    - build:
+        requires:
+        - test
