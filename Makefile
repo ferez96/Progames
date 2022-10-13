@@ -14,9 +14,7 @@ build:
 
 test: venv
 	. ./venv/bin/activate; pip install .
-	. ./venv/bin/activate; pytest --no-header -vv --durations=10
-
-
+	. ./venv/bin/activate; pytest --no-header -vv --durations=10 --junitxml=test-results/junit.xml
 
 
 dev-init-db: venv-dev
