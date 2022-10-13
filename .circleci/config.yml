@@ -12,6 +12,8 @@ jobs:
         name: Test
         command: |
           make test
+    - store_test_results:
+        path: test-results
   coverage:
     executor: python/default
     steps:

@@ -16,7 +16,7 @@ __pycache__
 .pytest_cache/
 .idea/
 docs/_build/
-
+test-results/
 
 # Coverage reports
 htmlcov/
