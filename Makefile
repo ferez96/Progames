@@ -14,7 +14,7 @@ build:
 
 test: venv
 	. ./venv/bin/activate; pip install .
-	. ./venv/bin/activate; pytest -v
+	. ./venv/bin/activate; pytest --no-header -vv --durations=10
 
 
 
