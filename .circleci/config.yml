@@ -40,11 +40,11 @@ workflows:
           test-tool: pytest
       - coverage:
           requires:
-          - test
+          - python/test
           filters:
             branches:
               only:
               - master
       - build:
           requires:
-          - test
+          - python/test
