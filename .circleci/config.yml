@@ -39,8 +39,12 @@ workflows:
           pkg-manager: pip
           test-tool: pytest
       - coverage:
+          requires:
+          - test
           filters:
             branches:
               only:
               - master
-      - build
+      - build:
+          requires:
+          - test
