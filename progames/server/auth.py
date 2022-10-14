@@ -4,6 +4,7 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, abort
 )
 from werkzeug.security import check_password_hash, generate_password_hash
+from progames.server import repository
 
 from progames.server.db import get_db
 
@@ -23,14 +24,8 @@ def login_required(view):
 
 @bp.before_app_request
 def load_logged_in_user():
-    user_id = session.get('user_id')
-
-    if user_id is None:
-        g.user = None
-    else:
-        g.user = get_db().execute(
-            'SELECT * FROM user WHERE id = ?', (user_id,)
-        ).fetchone()
+    user_id = session.get('user_id')    
+    g.user = repository.get_user_by_id(user_id) if user_id else None
 
 
 @bp.route('/register', methods=('GET', 'POST'))
@@ -44,11 +39,8 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        db = get_db()
         error = None
-        user = db.execute(
-            'SELECT * FROM user WHERE username = ?', (username,)
-        ).fetchone()
+        user = repository.get_user_by_username(username)
 
         if user is None:
             error = 'Incorrect username.'

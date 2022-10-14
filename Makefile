@@ -6,7 +6,7 @@ venv:
 venv-dev:
 	python3 -m pip install virtualenv
 	python3 -m virtualenv venv-dev
-	. ./venv-dev/bin/activate; pip install --editable .
+	. ./venv-dev/bin/activate; pip install -r requirements.txt --editable .
 	
 
 build:
