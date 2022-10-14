@@ -2,8 +2,9 @@
 <title>{% block title %}{% endblock %} - Progames</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <nav>
-  <h1>Progames</h1>
+  <h1><a href="{{ url_for('index') }}">Progames</a></h1>
   <ul>
+    <li><a href="{{ url_for('admin.index') }}">Admin</a>
     {% if g.user %}
       <li><span>{{ g.user['username'] }}</span>
       <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
