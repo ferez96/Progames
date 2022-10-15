@@ -1,5 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'admin/base.html' %}
 
 {% block content %}
-This is admin page
+<ul>
+    <li><a href="{{ url_for('admin.users') }}">Users</a></li>
+    <li><a href="#">Games</a></li>
+    <li><a href="#">Matches</a></li>
+</ul>
 {% endblock %}
