@@ -22,8 +22,13 @@ def login_required(view):
 
 @bp.before_app_request
 def load_logged_in_user():
-    user_id = session.get('user_id')    
-    g.user = r.get_user_by_id(user_id) if user_id else None
+    user_id = session.get('user_id')
+    if user_id is None:
+        g.user = None
+    else:
+        user = r.get_user_by_id(user_id)
+        # user['avatar_url'] = f"https://i.pravatar.cc/150?u={ user['username'] }@progames.com"
+        g.user = user
 
 
 @bp.route('/register', methods=('GET', 'POST'))
