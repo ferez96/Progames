@@ -1,3 +1,15 @@
+{% set navigation_bar = [
+(url_for('index'), 'index', 'Home'),
+(url_for('admin.index'), 'admin', 'Admin'),
+] -%}
+{% set active_page = active_page|default('index') -%}
+
+{% macro render_nav_item(caption, href, active) -%}
+<li class="nav-item">
+  <a class="nav-link {% if active %}active{% endif %}" aria-current="page" href="{{ href }}">{{ caption }}</a>
+</li>
+{%- endmacro %}
+
 <!doctype html>
 
 <head>
@@ -24,12 +36,9 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('admin.index') }}">Admin</a>
-          </li>
+          {% for href, id, caption in navigation_bar %}
+          {{ render_nav_item(caption, href, id == active_page) }}
+          {% endfor %}
         </ul>
         <ul class="navbar-nav mb-2 mb-lg-0">
           {% if g.user %}

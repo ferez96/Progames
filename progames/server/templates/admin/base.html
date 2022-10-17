@@ -1,2 +1,34 @@
 {% extends 'base.html' %}
-{% block title %}Admin{% endblock %} 
+{% block title %}Admin{% endblock %}
+
+{% set active_page = 'admin' -%}
+{% set admin_menu = [
+(url_for('admin.index'), 'index', 'Index'),
+(url_for('admin.users'), 'users', 'Users'),
+] -%}
+{% set active_menu_item = active_menu_item|default('index') -%}
+
+{% macro render_admin_menu_item(caption, href, active) -%}
+<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if active %}active{% endif %}" href="{{ href }}">{{ caption }}</a>
+{%- endmacro %}
+
+
+{% block content %}
+<div class="row">
+    <div class="col-3">
+        <div class="list-group list-group-flush">
+            {% for href, id, caption in admin_menu %}
+            {{ render_admin_menu_item(caption, href, id == active_menu_item) }}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-9">
+        <div class="card">
+            <div class="card-body">
+                {% block admin_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

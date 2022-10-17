@@ -1,9 +1,3 @@
 {% extends 'admin/base.html' %}
 
-{% block content %}
-<ul>
-    <li><a href="{{ url_for('admin.users') }}">Users</a></li>
-    <li><a href="#">Games</a></li>
-    <li><a href="#">Matches</a></li>
-</ul>
-{% endblock %}
+{% block admin_content %}Administration{% endblock %}
