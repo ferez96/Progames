@@ -24,8 +24,9 @@
     </div>
 
     <div class="col-9">
-        <div class="card">
+        <div class="card">            
             <div class="card-body">
+                <h3 class="card-title">{% block admin_title %}{% endblock %}</h3>
                 {% block admin_content %}{% endblock %}
             </div>
         </div>
