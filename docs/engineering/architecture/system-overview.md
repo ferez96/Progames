@@ -12,10 +12,10 @@ flowchart LR
   U[User] --> W[WebApp]
   W -->|HTTP| M[Manager Service]
   M --> Q[Queue]
-  Q --> GM[Game Master (Worker)]
+  Q --> GM[Game Master Worker]
   GM --> B[(Blob)]
   GM --> EB[Event Bus]
-  EB --> R[Reporter (Worker)]
+  EB --> R[Reporter Worker]
   M --> DB[(RDBMS)]
   R --> DB
 ```
