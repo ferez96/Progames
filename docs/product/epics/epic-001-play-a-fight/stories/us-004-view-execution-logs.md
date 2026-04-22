@@ -2,19 +2,19 @@
 
 ## Story
 
-An operator can read execution logs for a match run (stdout/stderr capture).
-
-## Why
-
-Essential for debugging bot behavior.
+After a match run, the user can **open execution logs** (stdout/stderr or merged text) with `SPECS.md` §14.7 truncation behavior.
 
 ## Scope
 
-* Capture **stdout** / **stderr** (or merged text) per match run (**§14.3**, **§14.7**).
-* Persist with **truncation** beyond a configured max size and a clear **truncation marker** in stored text (**§14.7**).
-* Timeout / invalid line context where the runner exposes it.
+- **Read path:** retrieve persisted logs for `completed` and `failed` matches (`SPECS.md` §12, §14.5).
+- **Log contract:** stored text respects max size, truncation, and a visible truncation marker (`SPECS.md` §14.7).
+- Capture during the run may be implemented in the match pipeline (US-001); this story owns the **user-visible** log artifact contract and retrieval.
+
+## Depends on
+
+- US-001 (run produces capturable output tied to the match).
 
 ## Done when
 
-* Logs are readable after execution for **completed** or **`failed`** matches (**§12**, **§14.5**).
-* Truncation behavior matches **§14.7**.
+- User can load logs for a finished match without ad-hoc file hunting.
+- Truncation behavior matches §14.7 (deterministic and marked).

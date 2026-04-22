@@ -1,10 +1,8 @@
 # Documentation
 
-Project documentation is split by audience and purpose.
+`docs/product/SPECS.md` is the single source of truth.
 
-**Product source of truth:** [`product/SPECS.md`](product/SPECS.md) (implementation and acceptance contracts in §14; foundation milestone in §16).
+## Structure
 
-## Sections
-
-- `product/` — roadmap, epics, user stories, **SPECS.md**
-- `engineering/` — architecture, ADRs, and future runbooks/standards
+- `product/`: scope, epics, user stories (must align with `SPECS.md`).
+- `engineering/`: architecture and ADRs that implement `SPECS.md`.

@@ -2,23 +2,21 @@
 
 ## Story
 
-The system executes a **practice match** between **two** compiled submissions: **two games** per match (first player alternates), Caro rules per [SPECS.md](../../../SPECS.md) **§3–§4**.
-
-## Why
-
-This is the core of the platform—nothing else matters without it.
+Run one **practice** match (`SPECS.md` §14.6): user agent vs **system** default opponent, Caro rules, **two games** per match with alternating first player.
 
 ## Scope
 
-* Two submissions per match; **two games** per match (**§4**).
-* Bot processes with stdin/stdout protocol (**§14.3**, ADR-001).
-* **Per-move wall clock** configurable; product default **5s** (**§14.4**).
-* Deterministic outcomes and tie-break per **§4** when needed.
-* Raw / structured logs for the run (**§14.7**).
-* **Foundation:** hard cgroup-style isolation deferred (**§16**); document actual runner behavior.
+- Match structure and outcomes follow `SPECS.md` §3–§4.
+- Bot I/O follows `SPECS.md` §14.3 and ADR-001.
+- Limits and `Match` / `Game` statuses follow `SPECS.md` §14.4–§14.5.
+- **Write path only:** persist ordered gameplay/runtime data per `SPECS.md` §14.7 so the run is complete and downstream stories can read it. No requirement for user-facing log/result/replay UI here (US-004–US-006).
+
+## Depends on
+
+- US-003: at least one `compiled` user submission and a valid system opponent agent for pairing.
 
 ## Done when
 
-* A practice match can run end-to-end without crashing the orchestrator.
-* Both games complete according to **§3** (win / loss / draw per game).
-* Match result and logs are produced and persistable (**§14.5**, **§14.7**).
+- A practice match runs end-to-end with correct terminal `Match` / `Game` states.
+- Both games finish with outcomes consistent with `SPECS.md` §3–§4.
+- Persisted data from §14.7 exists for the run (event stream and/or projections needed for completion), without requiring the polished read surfaces in US-004–US-006.

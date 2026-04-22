@@ -1,16 +1,24 @@
 # EPIC-001: Play a Fight
 
-## Overview
+## Goal
 
-This epic covers the first product slice: submit **Go** bots, run a **practice match** with **two** submissions, execute **two games per match** (first player swaps) per [SPECS.md](../../SPECS.md) **§4**, then inspect results, logs, and **basic replay** ([SPECS.md](../../SPECS.md) **§14.6–14.7**, **§16**).
+Deliver foundation gameplay loop from `SPECS.md`:
 
-**“Safely”** here means: build and runtime failures are handled without taking down the orchestrator; terminal **status** is correct (`Submission` `pending` / `compiled` / `invalid`; `Match` `queued` / `running` / `completed` / `failed`, **§14.5**); **stale filesystem artifacts** are marked or recorded for later cleanup (**§16.4**). **Hard** sandbox (no network, strict limits) is **deferred** until a Docker/sandbox ADR (**§14.3**, **§16**).
+- submit Go bot code,
+- run a practice match (2 games, alternating first player),
+- view result, logs, and basic replay.
 
-## User stories
+## Constraints
 
-- `stories/us-001-run-fight-core-engine.md`
-- `stories/us-002-handle-invalid-code.md`
-- `stories/us-003-upload-and-submit-code.md`
-- `stories/us-004-view-execution-logs.md`
-- `stories/us-005-view-fight-result.md`
-- `stories/us-006-visualize-fight-replay.md`
+- Contracts and statuses follow `SPECS.md` §14.
+- Foundation scope follows `SPECS.md` §16.
+- Hard sandbox enforcement is deferred until sandbox ADR.
+
+## User stories (suggested delivery order)
+
+1. `stories/us-003-upload-and-submit-code.md` — compiled submission exists.
+2. `stories/us-001-run-fight-core-engine.md` — practice match run + durable write path for the run.
+3. `stories/us-002-handle-invalid-code.md` — failure semantics and cleanup acceptance.
+4. `stories/us-005-view-fight-result.md` — outcome summary only (winner / draw / failed, per-game labels); not logs, not move-by-move.
+5. `stories/us-004-view-execution-logs.md` — deep execution logs (§14.7 truncation).
+6. `stories/us-006-visualize-fight-replay.md` — ordered moves / basic step-through (§14.7); not a substitute for US-005 or US-004.

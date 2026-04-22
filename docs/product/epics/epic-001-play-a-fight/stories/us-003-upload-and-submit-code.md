@@ -2,22 +2,17 @@
 
 ## Story
 
-An operator provides Go source so the system can create a **submission** and later use it in a match.
-
-## Why
-
-Entry point for getting code into the system.
+User submits Go source so the system creates a `SourceCode` record and a `Submission` that can become match-eligible when `compiled`.
 
 ## Scope
 
-* **Go only** for MVP (**§6**).
-* Paste or file upload (UX flexible); persist as `SourceCode` and run **`go build`** (**§16**).
-* `Submission.status`: `pending` → `compiled` or `invalid` (**§14.5**).
-* **Foundation trigger:** **CLI** (no HTTP API in **§16**); HTTP planned later.
-* “Queued” means **internal** scheduling or `Match.status = queued`, **not** an external message bus (**§16.2**).
+- Input is Go `main.go` only (`SPECS.md` §6).
+- Persist `SourceCode`; run `go build`; update `Submission.status` per `SPECS.md` §14.5 (`pending` → `compiled` or `invalid`).
+- Store built binary and related metadata on local disk for foundation (`SPECS.md` §16).
+- Web editor/upload path in foundation; CLI optional (`SPECS.md` §16).
 
 ## Done when
 
-* Accepted source yields a `submission_id` and, on success, `compiled`.
-* Built binary stored on **local disk** alongside metadata (**§16**).
-* Invalid path sets `invalid` and does not run in a match.
+- Successful build yields `Submission.status = compiled` and a usable binary path for runners.
+- Failed build yields `Submission.status = invalid` with compile output / message preserved.
+- Match execution only accepts submissions that are `compiled` (failure acceptance catalog with US-002).

@@ -2,19 +2,24 @@
 
 ## Story
 
-An operator can see the outcome of a **match** without reading raw logs.
-
-## Why
-
-Provides primary feedback after a run.
+User sees **who won the match** (or draw / failed) and **per-game result labels**, without opening execution logs or a move-by-move replay.
 
 ## Scope
 
-* **Per-game** results: `player_a_win`, `player_b_win`, `draw` (**§14.5**).
-* **Match** winner from two games and **§4** tie-break (average move time, then lexicographic submission id).
-* Optional metrics (e.g. move counts, durations) if persisted.
+- **Summary only:** `Match` outcome and `Game.result` values (`player_a_win`, `player_b_win`, `draw`) per `SPECS.md` §14.5.
+- **Match resolution:** winner, match-level draw, or tie-break / rematch outcome per `SPECS.md` §4 and §4.4, from persisted match/game fields (not by re-simulating from logs).
+- **Read path:** one screen or payload focused on outcomes (counts, labels, terminal status).
+
+## Out of scope
+
+- Ordered turn list or step-through replay → **US-006**.
+- Stdout/stderr log viewer → **US-004**.
+
+## Depends on
+
+- US-001 (terminal match/game state persisted correctly).
 
 ## Done when
 
-* Match-level win/loss (and draw handling if applicable) is clear from stored fields or summary API/CLI.
-* No need to parse logs to know who won the **match**.
+- User can answer “who won / draw / failed?” from the result view or API without parsing logs or replaying moves.
+- Per-game labels match stored `Game.result` and match-level rules in §4.
