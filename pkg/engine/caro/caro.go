@@ -1,5 +1,5 @@
 // Package caro implements the Caro game engine.
-// Caro is a two-player turn-based strategy game where players take turns placing their marks on a 15x15 grid.
+// Caro is a two-player turn-based strategy game where players take turns placing their marks on an 8x8 grid.
 // The first player to get 5 of their marks in a row (horizontally, vertically, or diagonally) wins.
 
 package caro
@@ -81,7 +81,7 @@ func NewGame(players []string) *Game {
 		return nil
 	}
 	return &Game{
-		board:              NewBoard(15),
+		board:              NewBoard(8),
 		players:            players,
 		currentPlayerIndex: 0,
 		turnCount:          0,
