@@ -1,16 +1,20 @@
-# 🎬 US-006: Visualize Fight (Replay)
+# US-006: Visualize Fight (Replay)
 
 ## Story
-Player watches a visual replay of the fight.
+
+An operator can step through a fight using persisted moves (basic replay).
 
 ## Why
-Key differentiator and strong showcase feature.
+
+Makes outcomes auditable and easier to teach.
 
 ## Scope
-- Step-by-step playback
-- Game state per tick
-- Simple visualization (web or CLI)
+
+* **Basic replay** = ordered list of **Move** records sufficient to advance the engine (**§14.7**).
+* **Foundation:** **CLI** or textual step-through is in scope; **fancy UI** is a **non-goal** for MVP (**§9**).
+* Web or rich visualization = **post-foundation / P1** unless explicitly pulled in.
 
 ## Done when
-- Full replay from start to end works
-- Users can follow what happened
+
+* Full match (both games) can be replayed from stored moves from start to end.
+* Operator can follow what happened without ad-hoc log scraping.

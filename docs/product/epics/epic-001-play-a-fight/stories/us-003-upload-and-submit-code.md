@@ -1,18 +1,23 @@
-# 🥉 US-003: Upload & Submit Code
+# US-003: Upload & Submit Code
 
 ## Story
-Player uploads or submits code to participate in a fight.
+
+An operator provides Go source so the system can create a **submission** and later use it in a match.
 
 ## Why
-Entry point for users into the system.
+
+Entry point for getting code into the system.
 
 ## Scope
-- Paste code or upload file
-- Select language (start with Go)
-- Submit creates a submission
-- Trigger fight (immediate or queued)
+
+* **Go only** for MVP (**§6**).
+* Paste or file upload (UX flexible); persist as `SourceCode` and run **`go build`** (**§16**).
+* `Submission.status`: `pending` → `compiled` or `invalid` (**§14.5**).
+* **Foundation trigger:** **CLI** (no HTTP API in **§16**); HTTP planned later.
+* “Queued” means **internal** scheduling or `Match.status = queued`, **not** an external message bus (**§16.2**).
 
 ## Done when
-- Submission is accepted
-- A `submission_id` is created
-- Code is passed to the engine
+
+* Accepted source yields a `submission_id` and, on success, `compiled`.
+* Built binary stored on **local disk** alongside metadata (**§16**).
+* Invalid path sets `invalid` and does not run in a match.

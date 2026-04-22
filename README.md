@@ -1,247 +1,164 @@
-# 🎮 Progames
+# Progames
 
-**Progames** is a distributed platform for running code-based agents in competitive turn-based games.
+**Progames** is a distributed platform for running code-based agents in competitive turn-based games and structured tournaments.
 
-Players join matches and submit their agents (code), which are executed in a controlled sandbox environment. The system orchestrates matches, enforces game rules, and produces structured results for analysis.
+Players submit agents (code), which run in a controlled environment while the system orchestrates matches, enforces rules, and produces structured results. The product specification lives in [`docs/product/SPECS.md`](docs/product/SPECS.md) (source of truth).
 
-> 🚀 Built as a hands-on project to explore distributed systems, sandboxed execution, and cloud-native orchestration on Azure.
-
----
-
-## ✨ Key Features (P0 Scope)
-
-### ⚔️ Code vs Code Gameplay (Turn-Based Only)
-
-* Players join a match and submit agents (code)
-* Matches are executed in a **turn-based model**
-* Each turn has a **configurable time limit** (e.g., 100ms per agent)
-* Engine waits for agent responses until timeout
+> Built as a hands-on project to explore distributed systems, sandboxed execution, and cloud-native orchestration on Azure.
 
 ---
 
-### 🧠 Game Engine (Caro - Gomoku)
+## Foundation vs full MVP
 
-* P0 supports a single hardcoded game: **Caro (Gomoku)**
-* The engine:
+**Foundation (current milestone, SPECS §16)** is the base for all later work:
 
-  * Maintains game state
-  * Validates moves
-  * Enforces rules
-* Agents interact with the engine via **stdin/stdout protocol**
+* **Practice matches** only (no tournaments, no external queue, no multi-worker product topology).
+* **CLI** for operators/developers; **no HTTP API** in this milestone (HTTP planned later).
+* **SQLite** plus **local disk** for source and built bot binaries; submissions via **`go build`** with `Submission.status`: `pending` → `compiled` or `invalid`.
+* **Max concurrent matches** is configurable (default **1**), enforced with a worker pool (e.g. goroutine + bounded channel), not a global lock.
+* **Versioned DB migrations** deferred to the second milestone.
+* **Hard sandbox** (no network, strict resource limits per SPECS §14.3) is **deferred** until a Docker/sandbox ADR; document actual runner behavior in engineering until then. **Linux** targets full isolation first; **Windows** is best-effort.
 
-> 🔮 Future direction: extensible engine for multiple game types (not part of P0)
+**Full MVP (SPECS §12)** adds items such as single-elimination tournaments and keeps MVP as **one logical system** (SPECS §14.1)—no separate queue or worker fleet is required to call MVP “done.”
 
----
-
-### 🔒 Sandboxed Execution (Incremental Approach)
-
-* Agents are executed as external processes
-* Communication via **stdin/stdout**
-* Basic isolation at process level
-
-> 🔄 Future upgrades may include:
->
-> * Container-based isolation (Docker)
-> * Resource limits (CPU/memory/time)
-> * Stronger security boundaries
+**Future / scale-out (SPECS §10, §14.1)** may add worker queues, blob storage, event-driven updates, and Azure deployment. See [`docs/engineering/architecture/system-overview.md`](docs/engineering/architecture/system-overview.md) for a **target** distributed diagram (not the foundation deliverable).
 
 ---
 
-### 📊 Match Reporting
+## Key features (aligned with SPECS)
 
-* Captures:
+### Turn-based code vs code
 
-  * Game states
-  * Moves per turn
-  * Final results
-* Outputs structured logs for replay and analysis
+* Two **submissions** per Caro match; each **match** runs **two games** (first player swaps), then aggregate winner and tie-breaks per SPECS §4.
+* **Configurable per-move wall clock**; product default is **5 seconds** (SPECS §14.4), not a sub-second default.
+* Engine waits for each bot’s move until timeout; timeout → loss for that player in the current game (SPECS §3).
 
----
+### Game engine (Caro / Gomoku)
 
-### ☁️ Distributed Orchestration (Azure-Focused)
+* **15×15** board, **two** players, turn-based, deterministic (SPECS §3).
+* Win = five in a row; invalid move / timeout / crash → loss; full board with no winner → **draw** (SPECS §3).
+* Bots use the **stdin/stdout** protocol (SPECS §14.3, [ADR-001](docs/engineering/decisions/ADR-001_bot-protocol.md)).
 
-* Designed to run as **multiple services**
-* Each component can be deployed independently
-* Supports scaling across nodes
+Future direction: multiple game types—out of scope for MVP (SPECS §9).
 
-> 🎯 Primary goal: demonstrate **distributed coordination and scaling**, not just deployment
+### Execution and reporting
 
----
-
-## 🏗️ Architecture Overview
-
-Progames follows a modular, service-oriented design:
-
-* **Game Master (P0)**
-  Orchestrates matches, controls game flow, and interacts with agents
-
-* **Sandboxer (P0)**
-  Executes user-submitted agents and manages process-level isolation
-
-* **Reporter (P0)**
-  Collects match data and produces structured outputs
+* Bots run as **external processes**; **stdout** is protocol-only (first line per turn); **stderr** for logs.
+* Persist moves, game/match outcomes, execution logs (with **truncation + marker**, SPECS §14.7), and **basic replay** (ordered moves).
 
 ---
 
-### 🔄 Execution Flow
+## Architecture (foundation)
 
-1. Player joins a match
-2. Player submits an agent (code)
-3. Game starts when all players are ready
-4. Game Master:
+Logical pieces (may live in one binary):
 
-   * Sends game state to agents
-   * Waits for responses (within time limit)
-5. Sandboxer:
+* **Match orchestration** — runs the two-game loop, alternates turns, applies rules.
+* **Bot runner** — spawns processes, enforces per-move timeout, captures logs.
+* **Game engine** — board state, validation, win/draw detection ([`pkg/engine/caro`](pkg/engine/caro)).
 
-   * Runs agents as processes
-   * Handles stdin/stdout communication
-6. Engine:
-
-   * Validates moves
-   * Updates game state
-7. Reporter logs all events and results
+On failure, persist correct terminal **status** (e.g. `Match.status = failed`, SPECS §14.5) and mark **stale filesystem artifacts** for later cleanup (SPECS §16.4).
 
 ---
 
-## 📁 Project Structure
+### Foundation execution flow (SPECS §16)
 
-```bash
+1. Operator submits Go source; system stores `SourceCode` and runs **`go build`**; `Submission` becomes `compiled` or `invalid`.
+2. Operator starts a **practice match** via **CLI**, passing **two submission IDs** (no deduplication—each start creates a new `Match`, SPECS §16.3).
+3. For each game in the match, the runner sends **one state line** per turn on stdin; bot replies with **one move line** on stdout (`x,y` in `1..15`, SPECS §14.2–14.3).
+4. Engine validates moves and updates state until game end; repeat for the second game.
+5. Match outcome and logs are persisted; replay is possible from ordered `Move` records (SPECS §14.7).
+
+---
+
+## Project structure
+
+```text
 progames/
-├── cmd/                # Entry points for services
-│   ├── visualizer/     # (future)
-│   ├── reporter/       # P0
-│   ├── game-master/    # P0
-│   └── manager/        # (future)
-│
-├── services/           # Service-oriented modules (can be split into separate repos)
-│   ├── visualizer/
-│   │   ├── internal/
-│   │   └── api/
-│   ├── reporter/
-│   │   ├── internal/
-│   │   └── api/
-│   ├── game-master/
-│   │   ├── internal/
-│   │   └── api/
-│   └── manager/
-│       ├── internal/
-│       └── api/
-│
-├── pkg/                # Shared libraries and reusable components
-│   ├── domain/         # Core domain models (game state, match, player)
-│   ├── usecase/        # Business logic abstractions
-│   ├── infra/          # Sandbox, process execution, storage
-│   ├── transport/      # API layer (HTTP/gRPC - planned)
-│   └── engine/         # Game engine (Caro logic)
-│
-├── api/                # API definitions (planned)
-├── deployments/        # Docker / cloud deployment configs
-├── scripts/            # Utility scripts
-└── .github/            # CI/CD workflows
+├── docs/                   # Product + engineering docs (SPECS.md is canonical)
+│   ├── product/
+│   └── engineering/
+├── pkg/
+│   └── engine/caro/        # Caro engine (library + tests)
+├── artifacts/              # Local artifacts (e.g. sample sources, match outputs) — layout may evolve
+├── go.mod
+└── README.md
 ```
 
----
-
-## ⚙️ Tech Stack
-
-* **Language:** Go
-* **Architecture:** Modular services (monorepo, multi-binary)
-* **Execution Model:** Process-based sandbox (stdin/stdout)
-* **Containerization:** Docker (planned enhancement)
-* **Cloud Target:** Azure
-* **Communication:** Local process I/O (P0), gRPC/REST (future)
+`cmd/` may appear as CLIs or services are added; see SPECS §16 for intended foundation behavior.
 
 ---
 
-## 🚀 Getting Started
+## Tech stack
+
+* **Language:** Go 1.25+ ([`go.mod`](go.mod))
+* **Foundation persistence:** SQLite + local filesystem (SPECS §16)
+* **Execution:** Process-based I/O (stdin/stdout), per SPECS §14.3
+* **Container sandbox:** Planned after ADR (SPECS §14.3 foundation note)
+* **Cloud / multi-service:** Future (SPECS §10); not required for foundation
+
+---
+
+## Getting started
 
 ### Prerequisites
 
-* Go 1.20+
-* Docker (optional for future setup)
+* Go 1.25+
 
----
-
-### Run Game Master
+### Run engine tests
 
 ```bash
-go run ./cmd/game-master
+go test ./pkg/engine/caro/...
 ```
+
+Match runner, CLI, and persistence are specified in **SPECS §16**; wire-up lives in application code as it lands.
 
 ---
 
-### Run Reporter
-
-```bash
-go run ./cmd/reporter
-```
-
----
-
-### Build All Services
-
-```bash
-make build
-```
-
----
-
-## 🧪 Example Match Flow
+## Example match flow (conceptual, SPECS §4)
 
 ```text
-1. Player A joins match
-2. Player B joins match
-3. Both players submit agents
-4. Game Master starts match
-5. For each turn:
-   - Send state → agents
-   - Wait for move (≤ 100ms)
-   - Validate and update state
-6. Game ends
-7. Reporter outputs match result
+1. Submission A and B are compiled (or marked invalid).
+2. Operator starts a practice match with both submission IDs.
+3. Game 1: submission A moves first; play until win / loss / draw.
+4. Game 2: submission B moves first; play until win / loss / draw.
+5. Match winner from game wins; tie-break uses average move time then lexicographic submission id (SPECS §4).
+6. Results, logs, and moves are persisted for inspection and replay.
 ```
 
 ---
 
-## 🎯 Project Goals
+## Project goals
 
-* Demonstrate **distributed orchestration of computation**
-* Explore **safe execution of untrusted code**
-* Design a **turn-based game engine with strict timing constraints**
-* Showcase **cloud-native scalability on Azure**
-* Serve as a strong portfolio project
+* Ship a **correct, testable** Caro match pipeline (foundation → full MVP per SPECS).
+* Move toward **safe execution of untrusted code** as sandbox ADRs land (SPECS §14.3).
+* Evolve toward **distributed orchestration** and Azure-aligned deployment without blocking early milestones (SPECS §14.1).
 
 ---
 
-## 🚧 Non-Goals (P0)
+## Non-goals (SPECS §9, §16)
 
-* No UI / visualization yet
-* No multi-game support
-* No advanced sandboxing (containers, VM isolation)
-* No matchmaking or ranking system
-
----
-
-## 🔮 Future Directions
-
-* Container-based sandbox (Docker / Firecracker)
-* Multi-game engine (plugin or config-driven)
-* Web-based match visualization
-* Matchmaking & ranking system
-* Multi-language agent support
-* Distributed queue (Azure Service Bus / Kafka)
+* Fancy UI; generic multi-game engine; real-time play; matchmaking; multi-language bots (MVP is **Go only**, SPECS §6).
+* **Foundation:** tournaments, external message queue, versioned DB migrations, hard network isolation until sandbox ADR.
+* “Leaderboards beyond tournament” and similar—see SPECS §9.
 
 ---
 
-## ⚠️ Disclaimer
+## Future directions
 
-This project is an early-stage prototype focused on system design and experimentation.
-Security and isolation mechanisms are intentionally simplified in P0.
+* Docker / sandbox ADR and enforcement of §14.3 **target** bar
+* HTTP API and optional WebApp (post-foundation)
+* Multi-game engine, visualization, matchmaking, multi-language agents
+* Distributed queue, workers, blob storage, Azure (SPECS §10)
 
 ---
 
-## 👤 Author
+## Disclaimer
+
+Early-stage work: security and isolation are **not** fully enforced until the sandbox ADR is implemented (SPECS §16, §14.3). Use only in trusted environments.
+
+---
+
+## Author
 
 **Dương Thái Minh**
 
@@ -250,6 +167,6 @@ Security and isolation mechanisms are intentionally simplified in P0.
 
 ---
 
-## 📄 License
+## License
 
 MIT License

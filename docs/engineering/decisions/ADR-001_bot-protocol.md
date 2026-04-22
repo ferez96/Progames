@@ -2,11 +2,13 @@
 
 ## Status
 
-In-Review
+Accepted
+
+Normative details and limits: [SPECS.md](../../product/SPECS.md) §14 (contracts) and §16 (foundation milestone). If this ADR and §14 disagree, **SPECS wins** until revised.
 
 ## Context
 
-Progames runs user-submitted bots in a sandbox for turn-based games (e.g. Caro). The runner must communicate with each bot **deterministically**, with **no network** from the bot process, and **minimal** learning curve for participants.
+Progames runs user-submitted bots for turn-based games (e.g. Caro). The runner must communicate with each bot **deterministically** and with **minimal** learning curve for participants. The **product target** is **no network** from the bot process and **resource limits** ([SPECS.md](../../product/SPECS.md) §14.3); **hard enforcement** of that target is **deferred** until a Docker/sandbox ADR is adopted (SPECS §16, §14.3 foundation note).
 
 ## Decision
 
@@ -23,7 +25,7 @@ Use **standard input and output**: each turn, the runner writes **one line** (ga
 
 - Simple to implement and test locally; matches competitive-programming style.
 - Strict request/response per turn; easy to replay and reason about.
-- No network requirement; resource limits and isolation stay straightforward.
+- The **transport** does not require the bot to open network connections; once a sandbox ADR lands, the runner can enforce no-network and limits per SPECS §14.3.
 
 **Negative**
 
@@ -34,6 +36,13 @@ Use **standard input and output**: each turn, the runner writes **one line** (ga
 
 - Treat **stdout as protocol-only**; document logging on **stderr**.
 - Read **only the first stdout line** per turn; malformed or out-of-range output → **invalid move** (loss) per [SPECS.md](../../product/SPECS.md) §3 and §14.
+
+## Foundation vs enforcement
+
+This ADR records the **I/O transport**: stdin/stdout line discipline, encoding, and move line shape. It does **not** replace a future **sandbox ADR** (e.g. Docker).
+
+- **Foundation (SPECS §16):** Implement the protocol and document **actual** runner behavior (timeouts, process spawn, log capture). **Hard** network denial and cgroup-style resource caps follow the sandbox ADR; until then, SPECS §14.3 describes the **target** bar.
+- **After sandbox ADR:** Align enforcement with [SPECS.md](../../product/SPECS.md) §14.3–14.4; Linux should reach full isolation first; Windows best-effort until defined.
 
 ## Normative summary (engineering)
 
@@ -49,5 +58,5 @@ Full contract: [docs/product/SPECS.md](../../product/SPECS.md) §14.
 
 ## References
 
-- [docs/product/SPECS.md](../../product/SPECS.md) §14 (source of truth for MVP contracts)
+- [docs/product/SPECS.md](../../product/SPECS.md) §14 (MVP contracts), §16 (foundation milestone)
 

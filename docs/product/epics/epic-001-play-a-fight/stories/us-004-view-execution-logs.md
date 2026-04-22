@@ -1,16 +1,20 @@
-# 🏅 US-004: View Execution Logs
+# US-004: View Execution Logs
 
 ## Story
-Player views execution logs of their code.
+
+An operator can read execution logs for a match run (stdout/stderr capture).
 
 ## Why
-Essential for debugging and understanding behavior.
+
+Essential for debugging bot behavior.
 
 ## Scope
-- `stdout` / `stderr`
-- Error messages
-- Timeout indicators
+
+* Capture **stdout** / **stderr** (or merged text) per match run (**§14.3**, **§14.7**).
+* Persist with **truncation** beyond a configured max size and a clear **truncation marker** in stored text (**§14.7**).
+* Timeout / invalid line context where the runner exposes it.
 
 ## Done when
-- Logs are accessible after execution
-- Users can understand what happened
+
+* Logs are readable after execution for **completed** or **`failed`** matches (**§12**, **§14.5**).
+* Truncation behavior matches **§14.7**.

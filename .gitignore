@@ -54,3 +54,6 @@ desktop.ini
 # --- Test result artifacts ---
 test-results/
 *.xml
+
+# --- Artifacts ---
+artifacts/
