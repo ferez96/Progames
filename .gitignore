@@ -1,0 +1,56 @@
+# --- Binaries and build output ---
+bin/
+dist/
+build/
+out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- Go workspace and tooling ---
+vendor/
+go.work
+go.work.sum
+
+# --- Coverage and profiling ---
+coverage/
+coverage.*
+*.coverprofile
+cover.out
+cpu.prof
+mem.prof
+*.pprof
+
+# --- Logs and runtime files ---
+*.log
+*.pid
+tmp/
+temp/
+
+# --- Environment and secrets ---
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Test result artifacts ---
+test-results/
+*.xml
