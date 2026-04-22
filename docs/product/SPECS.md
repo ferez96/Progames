@@ -4,7 +4,9 @@
 
 ## 1. Product Vision (LOCKED)
 
-**Progames is a platform to develop and compete code agents through automated matches and structured tournaments.**
+**Progames is a distributed platform for running code-based agents in competitive turn-based games and structured tournaments.**
+
+Players join matches and submit their agents (code), which are executed in a controlled sandbox environment. The system orchestrates matches, enforces game rules, and produces structured results for analysis.
 
 The system supports:
 
@@ -104,7 +106,7 @@ If the averages are **equal**, or neither side has any qualifying samples, the w
 
 ---
 
-## 6. Bot Constraints
+## 6. Bot Constraints (MVP)
 
 * Language: **Go only**
 * Execution via process (stdin/stdout)
@@ -152,8 +154,8 @@ If the averages are **equal**, or neither side has any qualifying samples, the w
 ### User
 
 ```
-id
-name
+id: int64
+name: string(255)
 ```
 
 ---
@@ -161,11 +163,12 @@ name
 ### SourceCode
 
 ```
-id
-language
-storage_path
-size
-created_at
+id: uuid
+language: enum(Go)
+storage_type: enum(local)
+storage_key: string(255)
+size: int64
+created_at: datetime
 ```
 
 ---
@@ -173,11 +176,12 @@ created_at
 ### Submission
 
 ```
-id
-user_id
-source_code_id
-status
-created_at
+id: int64
+user_id: int64
+source_code_id: uuid
+status: enum(pending, compiled, invalid)
+error_msg: string
+created_at: datetime
 ```
 
 ---
@@ -185,10 +189,10 @@ created_at
 ### Tournament
 
 ```
-id
-name
-status
-created_at
+id: int64
+name: string(255)
+status: enum(draft, open, running, completed, cancelled)
+created_at: datetime
 ```
 
 ---
@@ -196,10 +200,10 @@ created_at
 ### TournamentEntry
 
 ```
-id
-tournament_id
-submission_id
-seed
+id: int64
+tournament_id: int64
+submission_id: int64
+seed: int64
 ```
 
 ---
@@ -207,12 +211,13 @@ seed
 ### Match
 
 ```
-id
-tournament_id (nullable)
-submission_a
-submission_b
-status
-winner_submission_id
+id: int64
+tournament_id: int64 (nullable)
+submission_a: int64
+submission_b: int64
+status: enum(queued, running, completed, failed)
+winner_submission_id: int64 (nullable when failed or unset until complete)
+error_msg: string
 ```
 
 ---
@@ -220,13 +225,13 @@ winner_submission_id
 ### Game
 
 ```
-id
-match_id
-player_a
-player_b
-result
-duration_ms
-move_count
+id: int64
+match_id: int64
+player_a: string
+player_b: string
+result: enum(player_a_win, player_b_win, draw) — see §14.5
+duration_ms: int64
+move_count: int8
 ```
 
 ---
@@ -234,18 +239,18 @@ move_count
 ### Move
 
 ```
-id
-game_id
-turn
-player
-x
-y
-duration_ms
+id: int64
+game_id: int64
+turn: int8
+player: string
+x: int8
+y: int8
+duration_ms: int64
 ```
 
 ---
 
-## 9. Non-Goals (STRICT)
+## 9. MVP Non-Goals (STRICT)
 
 Do NOT build:
 
@@ -254,14 +259,13 @@ Do NOT build:
 * Matchmaking system
 * Leaderboards (beyond tournament)
 * Fancy UI
-* Distributed system **as the first shipped MVP binary** (see §14.1; a single process / monolith is fine until you choose to split)
 * Generic game engine
 
 ---
 
 ## 10. Scalability Vision (IMPORTANT)
 
-The system is designed to evolve into a distributed architecture capable of:
+The system is designed to evolve into a distributed architecture capable of, simultaneously:
 
 * 1000+ tournaments
 * 1,000,000 users
@@ -283,14 +287,17 @@ Future architecture may include:
 * Avoid premature abstraction
 * Prefer working system over perfect design
 * Optimize for fast iteration
+* Always open rooms for evolve
 
 ---
 
 ## 12. Success Criteria (MVP)
 
+The **foundation milestone** (§16) is the first shippable slice: practice matches with persistence, logs, and replay. It **omits** tournaments, HTTP API, and hard sandbox isolation until follow-on work. Full MVP success includes everything below.
+
 The system is successful when:
 
-* A bot can be submitted as Go source and stored as `SourceCode` with `Submission.status = received`
+* A bot can be submitted as Go source and stored as `SourceCode` with `Submission.status = compiled`
 * A **practice match** (§14.6) runs two games per §4 with outcomes consistent with §3 (including draw) and §14.3 I/O rules
 * A **single-elimination** tournament with a small fixed bracket (e.g. 4 submissions) runs to `Tournament.status = completed` with one winner
 * Match and game outcomes are visible without reading raw logs (win/lose/draw at match level)
@@ -333,6 +340,7 @@ This section removes ambiguity for implementation and acceptance tests. If code 
 * **Invalid output** (unreadable coordinates, out of range, wrong format, empty line): treated as an **invalid move** → immediate loss for that player in the current game (per §3).
 * **stderr**: captured for logs when available; must not be required for correctness.
 * **Security / abuse (MVP bar)**: Bot processes run **without network access** and under **resource limits** (below). Violations are treated as **crash** or **invalid move** per runner policy.
+* **Foundation phase (§16)**: Hard enforcement of the above (e.g. network denial, cgroup-style limits) is **deferred** until a **Docker/sandbox ADR** is adopted. Until then, document actual runner behavior in engineering; treat §14.3 as the **target** bar once isolation lands. **Linux** should reach full isolation first; **Windows** is **best-effort** until the sandbox story is defined.
 
 ### 14.4 Resource limits (MVP defaults)
 
@@ -343,6 +351,7 @@ Defaults are product-level; implementation may read them from config.
 | Per-move wall clock | 5s | From sending the state line until a complete first stdout line is received, or loss on timeout |
 | Max source upload size | 256 KiB | Per `SourceCode` artifact |
 | Max single stdout line read | 64 KiB | Longer input → treat as invalid move / crash per runner |
+| Max concurrent matches | 1 | Cap concurrent match runs (e.g. worker pool); raise when infrastructure allows |
 | Memory | OS-enforced / runner cap when available | Document actual cap in engineering when set |
 
 ### 14.5 Status enums (MVP)
@@ -351,8 +360,9 @@ Allowed values and typical transitions:
 
 **Submission.status**
 
-* `received` — stored and eligible to be scheduled
-* `invalid` — failed validation (size, language, static checks); not eligible to run
+* `pending` — stored; build (`go build`) not yet succeeded or still in progress
+* `compiled` — build succeeded; eligible to run matches
+* `invalid` — build failed or failed validation (size, language, static checks); not eligible to run
 
 **Match.status**
 
@@ -390,4 +400,46 @@ Allowed values and typical transitions:
 
 ## 15. Traceability
 
-* Epic user stories under `docs/product/epics/` must not contradict §3–§8 or §14. If they do, update the stories.
+* Epic user stories under `docs/product/epics/` must not contradict §3–§8, §14, or §16. If they do, update the stories.
+
+---
+
+## 16. Foundation milestone (LOCKED)
+
+This milestone is the **base** for all later work: Caro **practice** matches end-to-end with **persistence**, **execution logs**, and **basic replay** (§14.7). If §16 conflicts with another section on **foundation scope only**, **§16 wins** for what ships first; full MVP remains defined by §12 and the rest of §14.
+
+### 16.1 In scope
+
+* Practice matches (`tournament_id` null, §14.6): same engine and bot rules as future tournament matches.
+* CLI operated by developers/operators (no end-user HTTP API in this milestone; HTTP is planned later).
+* `Submission` lifecycle: `go build`; **invalid** if build fails; store **source** per `SourceCode` and the **built binary** on **local disk** (path/key per engineering).
+* Read path: **match summary** and/or **full detail** (moves, logs, etc.) for inspection.
+* Retention: **keep all matches** (no TTL) unless superseded by a later product decision.
+
+### 16.2 Explicitly out of scope
+
+* Tournaments, external queue, multi-worker **product** topology (single process / single deployable is fine).
+* Versioned **database migrations** — deferred to the **second milestone** (schema may evolve ad hoc until then).
+* Hard **sandbox isolation** — deferred until **Docker/sandbox ADR** (see §14.3 foundation note).
+
+### 16.3 Match creation and concurrency
+
+* **Trigger:** CLI.
+* **Pairing:** caller supplies **both** submission IDs.
+* **Idempotency:** each start creates a **new** `Match` row; **no deduplication** of invocations (repeated CLI calls = multiple matches).
+* **Concurrency:** enforce **max concurrent matches** via configuration (default **1**). Use a **worker pool** (e.g. goroutine + bounded channel), not a process-wide mutex, so raising the limit later does not require redesign.
+
+### 16.4 Failures, state, and cleanup
+
+* On **any** failure, persist a **correct terminal state** (e.g. `Match.status = failed`, `Submission.status = invalid` where applicable) and **error context** (`error_msg` or logs) so operators can diagnose.
+* **Stale filesystem artifacts** (temp dirs, partial outputs) must be **marked or recorded** for **later cleanup** (async sweeper, startup scan, or operator job — exact mechanism in engineering). This replaces an implicit “silent rollback only” rule.
+
+### 16.5 Acceptance (foundation)
+
+* Automated **unit** tests.
+* **Integration** tests using a **real bot subprocess**.
+* **Golden replay** fixtures (deterministic move sequences vs engine).
+
+### 16.6 Documentation
+
+* **Code + this SPECS** document; no separate operator runbook required for foundation.
