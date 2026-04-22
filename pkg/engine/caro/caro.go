@@ -1,5 +1,5 @@
 // Package caro implements the Caro game engine.
-// Caro is a two-player turn-based strategy game where players take turns placing their marks on a 10x10 grid.
+// Caro is a two-player turn-based strategy game where players take turns placing their marks on a 15x15 grid.
 // The first player to get 5 of their marks in a row (horizontally, vertically, or diagonally) wins.
 
 package caro
@@ -39,22 +39,28 @@ func NewBoard(size int) *Board {
 }
 
 func (b *Board) Apply(pos Position, mark rune) error {
-	if pos.X < 0 || pos.Y < 0 || pos.X >= b.Size || pos.Y >= b.Size {
+	// Contract uses one-based coordinates: x,y ∈ 1..Size.
+	if pos.X < 1 || pos.Y < 1 || pos.X > b.Size || pos.Y > b.Size {
 		return ErrOutOfBounds
 	}
-	if b.Cells[pos.Y][pos.X] != '.' {
+	x := pos.X - 1
+	y := pos.Y - 1
+
+	if b.Cells[y][x] != '.' {
 		return ErrOccupied
 	}
-	b.Cells[pos.Y][pos.X] = mark
+	b.Cells[y][x] = mark
 	return nil
 }
 
 func (b *Board) Snapshot() string {
-	lines := make([]string, 0, b.Size)
+	// Snapshot must be a single line for the bot protocol (runner -> bot).
+	// Row-major order (y first, then x) with '.' for empty cells.
+	parts := make([]string, 0, b.Size)
 	for _, row := range b.Cells {
-		lines = append(lines, string(row))
+		parts = append(parts, string(row))
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(parts, "")
 }
 
 func (p Position) String() string {
@@ -70,14 +76,12 @@ type Game struct {
 	gameResult         string
 }
 
-var playerMarks = map[int]rune{0: 'X', 1: 'O'}
-
 func NewGame(players []string) *Game {
 	if len(players) != 2 {
 		return nil
 	}
 	return &Game{
-		board:              NewBoard(10),
+		board:              NewBoard(15),
 		players:            players,
 		currentPlayerIndex: 0,
 		turnCount:          0,
@@ -86,20 +90,26 @@ func NewGame(players []string) *Game {
 	}
 }
 
+var playerMarks = map[int]rune{0: 'X', 1: 'O'}
+
 func (g *Game) ApplyMove(pos Position) error {
 	prevPlayerIdx := g.currentPlayerIndex
-	if err := g.board.Apply(pos, playerMarks[g.currentPlayerIndex]); err != nil {
+	mark := playerMarks[prevPlayerIdx]
+	if err := g.board.Apply(pos, mark); err != nil {
 		return err
 	}
 	g.turnCount++
-	if g.turnCount >= 100 {
-		g.gameOver = true
-		g.gameResult = "draw"
-	}
 	g.currentPlayerIndex = (g.currentPlayerIndex + 1) % len(g.players)
-	if g.isWinningMove(pos) {
+
+	if g.isWinningMove(pos, mark) {
 		g.gameOver = true
 		g.gameResult = g.players[prevPlayerIdx]
+		return nil
+	}
+
+	if isBoardFull(g.board.Cells) {
+		g.gameOver = true
+		g.gameResult = "draw"
 	}
 	return nil
 }
@@ -108,16 +118,11 @@ func (g *Game) GetBoard() *Board {
 	return g.board
 }
 
-func (g *Game) isWinningMove(pos Position) bool {
+func (g *Game) isWinningMove(pos Position, mark rune) bool {
 	board := g.board
 	if board == nil {
 		return false
 	}
-
-	// The player who made this move is the previous player.
-	// Because in ApplyMove, currentPlayerIndex is updated after a move.
-	prevPlayerIdx := (g.currentPlayerIndex + len(g.players) - 1) % len(g.players)
-	mark := playerMarks[prevPlayerIdx]
 
 	directions := [][2]int{
 		{0, 1},  // vertical
@@ -126,10 +131,14 @@ func (g *Game) isWinningMove(pos Position) bool {
 		{1, -1}, // diagonal up-right
 	}
 
+	// Convert one-based coordinates to internal 0-based indices.
+	x0 := pos.X - 1
+	y0 := pos.Y - 1
+
 	for _, dir := range directions {
 		count := 1
 		// Positive direction
-		x, y := pos.X, pos.Y
+		x, y := x0, y0
 		for i := 1; i < 5; i++ {
 			nx, ny := x+dir[0]*i, y+dir[1]*i
 			if nx < 0 || nx >= board.Size || ny < 0 || ny >= board.Size {
@@ -156,4 +165,15 @@ func (g *Game) isWinningMove(pos Position) bool {
 		}
 	}
 	return false
+}
+
+func isBoardFull(cells [][]rune) bool {
+	for _, row := range cells {
+		for _, cell := range row {
+			if cell == '.' {
+				return false
+			}
+		}
+	}
+	return true
 }
