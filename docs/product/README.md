@@ -4,6 +4,7 @@ This directory contains product planning documents in Markdown.
 
 ## Structure
 
+- `SPECS.md` contains the overall spec
 - `epics/`
   - One folder per epic
   - Each epic contains:
