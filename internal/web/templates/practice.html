@@ -1,0 +1,39 @@
+{{define "practice"}}
+<section class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="eyebrow mb-1">Sandbox</p>
+    <h1 class="h-display display-6 mb-0">Practice arena</h1>
+  </div>
+</section>
+{{with .Error}}<div class="alert alert-danger">{{.}}</div>{{end}}
+<div class="glass-card tilt p-4">
+  <form method="post" action="/practice/run" enctype="multipart/form-data" hx-post="/practice/run" hx-encoding="multipart/form-data" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button" class="vstack gap-4">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label text-soft">Opponent</label>
+        <select class="form-select form-select-lg" name="opponent_agent_id">
+          {{range .Agents}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label text-soft">Or upload main.go</label>
+        <input class="form-control form-control-lg" type="file" name="source_file">
+      </div>
+    </div>
+
+    <div>
+      <label class="form-label text-soft">Source code</label>
+      <textarea class="form-control font-monospace" name="source" rows="18" spellcheck="false">{{.Code}}</textarea>
+    </div>
+
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-primary btn-lg px-4" type="submit">
+        <span class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
+        Build &amp; run
+      </button>
+    </div>
+  </form>
+</div>
+{{end}}

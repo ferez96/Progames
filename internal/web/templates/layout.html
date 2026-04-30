@@ -1,0 +1,220 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · Progames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    :root {
+      --bg-base: #07080d;
+      --accent-1: #6366f1;
+      --accent-2: #ec4899;
+      --accent-3: #22d3ee;
+      --glass-bg: rgba(20, 22, 30, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --text-soft: #c7c9d4;
+    }
+
+    * { -webkit-font-smoothing: antialiased; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: #e6e7ee;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ===== Aurora / parallax background ===== */
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      z-index: -2;
+      filter: blur(120px);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    body::before {
+      width: 720px; height: 720px;
+      top: -200px; left: -150px;
+      background: radial-gradient(circle, var(--accent-1), transparent 60%);
+      animation: drift1 18s ease-in-out infinite alternate;
+    }
+    body::after {
+      width: 600px; height: 600px;
+      bottom: -220px; right: -150px;
+      background: radial-gradient(circle, var(--accent-2), transparent 60%);
+      animation: drift2 22s ease-in-out infinite alternate;
+    }
+    .aurora-c {
+      position: fixed;
+      width: 520px; height: 520px;
+      top: 32%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, var(--accent-3), transparent 60%);
+      filter: blur(120px);
+      opacity: 0.35;
+      z-index: -2;
+      animation: drift3 26s ease-in-out infinite alternate;
+      pointer-events: none;
+      transition: transform 200ms ease-out;
+    }
+    @keyframes drift1 { from {transform: translate(0,0)} to {transform: translate(180px, 120px)} }
+    @keyframes drift2 { from {transform: translate(0,0)} to {transform: translate(-160px, -100px)} }
+    @keyframes drift3 { from {transform: translate(-50%, -50%) scale(1)} to {transform: translate(-40%, -55%) scale(1.2)} }
+
+    /* ===== Topbar ===== */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(0px);
+      background: transparent;
+      border-bottom: 1px solid transparent;
+      transition: background 250ms ease, backdrop-filter 250ms ease, border-color 250ms ease;
+    }
+    .topbar.scrolled {
+      backdrop-filter: saturate(160%) blur(14px);
+      background: rgba(10, 12, 18, 0.55);
+      border-bottom-color: rgba(255,255,255,0.06);
+    }
+    .brand {
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* ===== Glass cards & 3D tilt ===== */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      backdrop-filter: blur(18px) saturate(160%);
+      box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7);
+      transition: transform 250ms ease, box-shadow 250ms ease;
+    }
+    .glass-card:hover {
+      box-shadow: 0 40px 100px -30px rgba(99, 102, 241, 0.35);
+    }
+    .tilt { transform-style: preserve-3d; will-change: transform; transition: transform 180ms ease; }
+
+    /* ===== Buttons / inputs ===== */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border: none;
+      box-shadow: 0 10px 30px -10px rgba(99,102,241,0.6);
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-outline-light { border-color: rgba(255,255,255,0.18); }
+    .btn-outline-light:hover { background: rgba(255,255,255,0.06); color: #fff; }
+
+    .form-control, .form-select {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.10);
+      color: #e6e7ee;
+    }
+    .form-control::placeholder { color: rgba(230,231,238,0.5); }
+    .form-control:focus, .form-select:focus {
+      background: rgba(255,255,255,0.06);
+      border-color: var(--accent-1);
+      box-shadow: 0 0 0 0.25rem rgba(99,102,241,0.25);
+      color: #fff;
+    }
+
+    /* ===== Typography ===== */
+    .font-monospace, code, pre { font-family: 'JetBrains Mono', monospace; }
+    .h-display { font-weight: 700; letter-spacing: -0.02em; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.72rem;
+      color: rgba(230,231,238,0.6);
+    }
+    .text-soft { color: var(--text-soft); }
+
+    /* ===== HTMX swap transitions ===== */
+    .htmx-swapping { opacity: 0; transform: translateY(8px); transition: opacity 180ms ease, transform 180ms ease; }
+    .htmx-settling { opacity: 0; transform: translateY(8px); }
+    .htmx-added    { animation: fadeIn 240ms ease forwards; }
+    @keyframes fadeIn { from {opacity:0; transform: translateY(8px);} to {opacity:1; transform: translateY(0);} }
+    .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+
+    /* Tables on dark glass */
+    .table { color: #e6e7ee; }
+    .table thead th { color: rgba(230,231,238,0.6); font-weight: 500; border-color: rgba(255,255,255,0.06); }
+    .table > :not(caption) > * > * { border-color: rgba(255,255,255,0.06); }
+  </style>
+</head>
+<body hx-boost="true">
+  <div class="aurora-c"></div>
+
+  <header class="topbar" id="topbar">
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand brand fs-4" href="/" hx-boost="false">Progames</a>
+        <div class="navbar-nav ms-auto gap-2">
+          {{if .Authenticated}}
+          <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">Practice</a>
+          <form method="post" action="/logout" hx-post="/logout" hx-swap="none" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
+          </form>
+          {{else}}
+          <a class="btn btn-outline-light btn-sm" href="/login" hx-get="/login" hx-target="#app" hx-push-url="true">Login</a>
+          <a class="btn btn-primary btn-sm" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Sign up</a>
+          {{end}}
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container py-5">
+    <div id="app">
+      {{.Content}}
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const topbar = document.getElementById('topbar');
+      const onScroll = () => topbar.classList.toggle('scrolled', window.scrollY > 8);
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // Mouse-tracked aurora (parallax accent)
+      const aurora = document.querySelector('.aurora-c');
+      window.addEventListener('mousemove', (e) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 80;
+        const y = (e.clientY / window.innerHeight - 0.5) * 60;
+        aurora.style.transform = 'translate(calc(-50% + ' + x + 'px), calc(-50% + ' + y + 'px))';
+      }, { passive: true });
+
+      // 3D tilt on .tilt elements
+      function bindTilt(root) {
+        root.querySelectorAll('.tilt').forEach((el) => {
+          el.addEventListener('mousemove', (e) => {
+            const r = el.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width - 0.5;
+            const py = (e.clientY - r.top) / r.height - 0.5;
+            el.style.transform = 'perspective(900px) rotateX(' + (-py*4).toFixed(2) + 'deg) rotateY(' + (px*6).toFixed(2) + 'deg)';
+          });
+          el.addEventListener('mouseleave', () => el.style.transform = '');
+        });
+      }
+      bindTilt(document);
+      document.body.addEventListener('htmx:afterSwap', (e) => bindTilt(e.target));
+    })();
+  </script>
+</body>
+</html>
+{{end}}

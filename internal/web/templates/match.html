@@ -1,0 +1,45 @@
+{{define "match"}}
+<section class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="eyebrow mb-1">Match</p>
+    <h1 class="h-display display-6 mb-0">#{{.Match.ID}}</h1>
+  </div>
+  <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">New practice</a>
+</section>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="glass-card tilt p-3 h-100">
+      <p class="eyebrow mb-1">Status</p>
+      <div class="fs-5 fw-semibold">{{.Match.Status}}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card tilt p-3 h-100">
+      <p class="eyebrow mb-1">Winner</p>
+      <div class="fs-5 fw-semibold">{{if .Match.WinnerAgentID.Valid}}Agent #{{.Match.WinnerAgentID.Int64}}{{else}}Draw / none{{end}}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="glass-card tilt p-3 h-100">
+      <p class="eyebrow mb-1">Duration</p>
+      <div class="fs-5 fw-semibold">{{if .Match.DurationMS.Valid}}{{.Match.DurationMS.Int64}}ms{{else}}-{{end}}</div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 mb-4">
+  <a class="btn btn-outline-light btn-sm" href="/matches/{{.Match.ID}}/logs" hx-get="/matches/{{.Match.ID}}/logs" hx-target="#app" hx-push-url="true">View logs</a>
+  <a class="btn btn-primary btn-sm" href="/matches/{{.Match.ID}}/replay" hx-get="/matches/{{.Match.ID}}/replay" hx-target="#app" hx-push-url="true">Replay</a>
+</div>
+
+<div class="glass-card p-4">
+  <h2 class="h5 mb-3">Games</h2>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>#</th><th>Result</th><th>Moves</th><th>Duration</th></tr></thead>
+      <tbody>{{range .Games}}<tr><td>{{.ID}}</td><td>{{.Result}}</td><td>{{.MoveCount}}</td><td>{{.DurationMS}}ms</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,23 @@
+{{define "login"}}
+<section class="row justify-content-center align-items-center" style="min-height: 60vh;">
+  <div class="col-md-6 col-lg-4">
+    <div class="text-center mb-4">
+      <p class="eyebrow mb-2">Welcome back</p>
+      <h1 class="h-display display-5 mb-2">Sign in</h1>
+      <p class="text-soft mb-0">Resume practicing and competing.</p>
+    </div>
+    <div class="glass-card tilt p-4">
+      {{with .Error}}<div class="alert alert-danger py-2">{{.}}</div>{{end}}
+      <form method="post" action="/login" hx-post="/login" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button" class="vstack gap-3">
+        <input class="form-control form-control-lg" name="email" type="email" placeholder="email" required autofocus>
+        <input class="form-control form-control-lg" name="password" type="password" placeholder="password" required>
+        <button class="btn btn-primary btn-lg" type="submit">
+          <span class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
+          Sign in
+        </button>
+      </form>
+      <p class="mt-3 mb-0 small text-soft text-center">No account? <a class="link-light" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Create one</a></p>
+    </div>
+  </div>
+</section>
+{{end}}

@@ -1,0 +1,17 @@
+{{define "replay"}}
+<section class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="eyebrow mb-1">Match #{{.MatchID}}</p>
+    <h1 class="h-display display-6 mb-0">Replay</h1>
+  </div>
+  <a class="btn btn-outline-light btn-sm" href="/matches/{{.MatchID}}" hx-get="/matches/{{.MatchID}}" hx-target="#app" hx-push-url="true">Back to match</a>
+</section>
+{{range .Replay}}
+<div class="glass-card p-4 mb-3">
+  <h2 class="h5 mb-3">Game #{{.Game.ID}} <span class="text-soft fw-normal">· {{.Game.Result}}</span></h2>
+  <ol class="small mb-0">
+    {{range .Moves}}<li>seq={{.Seq}} agent={{.AgentID}} type={{.ActionType}} accepted={{.Accepted}} payload={{.ActionPayload}} {{if .DurationMS.Valid}}duration={{.DurationMS.Int64}}ms{{end}}</li>{{end}}
+  </ol>
+</div>
+{{end}}
+{{end}}

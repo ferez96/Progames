@@ -1,7 +1,9 @@
 package web
 
 import (
+	"bytes"
 	"database/sql"
+	"embed"
 	"expvar"
 	"fmt"
 	"html/template"
@@ -54,13 +56,25 @@ type Server struct {
 	templates  *template.Template
 }
 
+type viewData struct {
+	Title         string
+	Content       template.HTML
+	Authenticated bool
+	CSRF          string
+	Data          any
+}
+
+//go:embed templates/*.html
+var templateFS embed.FS
+
 func New(st storeService, authSvc authService, subSvc submissionService, matchSvc matchService) *Server {
+	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
 	return &Server{
 		auth:       authSvc,
 		store:      st,
 		submission: subSvc,
 		match:      matchSvc,
-		templates:  template.Must(template.New("pages").Parse(pages)),
+		templates:  tmpl,
 	}
 }
 
@@ -118,38 +132,46 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) signupForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "signup", nil)
+	s.render(w, r, "Sign Up", "signup", nil)
 }
 
 func (s *Server) signup(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.render(w, "signup", map[string]any{"Error": err.Error()})
+		s.render(w, r, "Sign Up", "signup", map[string]any{"Error": err.Error()})
 		return
 	}
 	if _, err := s.auth.SignUp(r.FormValue("name"), r.FormValue("email"), r.FormValue("password")); err != nil {
-		s.render(w, "signup", map[string]any{"Error": err.Error()})
+		s.render(w, r, "Sign Up", "signup", map[string]any{"Error": err.Error()})
+		return
+	}
+	if isHTMX(r) {
+		w.Header().Set("HX-Redirect", "/login")
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "login", nil)
+	s.render(w, r, "Login", "login", nil)
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.render(w, "login", map[string]any{"Error": err.Error()})
+		s.render(w, r, "Login", "login", map[string]any{"Error": err.Error()})
 		return
 	}
 	_, sessionID, _, err := s.auth.SignIn(r.FormValue("email"), r.FormValue("password"))
 	if err != nil {
 		obs.LoginsFailure.Add(1)
-		s.render(w, "login", map[string]any{"Error": "invalid email or password"})
+		s.render(w, r, "Login", "login", map[string]any{"Error": "invalid email or password"})
 		return
 	}
 	obs.LoginsSuccess.Add(1)
 	s.auth.SetSessionCookie(w, r, sessionID)
+	if isHTMX(r) {
+		w.Header().Set("HX-Redirect", "/practice")
+		return
+	}
 	http.Redirect(w, r, "/practice", http.StatusSeeOther)
 }
 
@@ -163,6 +185,10 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		_ = s.auth.SignOut(cookie.Value)
 	}
 	auth.ClearSessionCookie(w)
+	if isHTMX(r) {
+		w.Header().Set("HX-Redirect", "/login")
+		return
+	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
@@ -173,7 +199,7 @@ func (s *Server) practice(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "practice", map[string]any{
+	s.render(w, r, "Practice", "practice", map[string]any{
 		"CSRF":   session.CSRFToken,
 		"Agents": agents,
 		"Code":   defaultCode,
@@ -211,17 +237,26 @@ func (s *Server) runPractice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	matchID, err := s.match.RunPractice(res.AgentID, opponentID)
+	target := fmt.Sprintf("/matches/%d", matchID)
 	if err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/matches/%d", matchID), http.StatusSeeOther)
+		if isHTMX(r) {
+			w.Header().Set("HX-Redirect", target)
+			return
+		}
+		http.Redirect(w, r, target, http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/matches/%d", matchID), http.StatusSeeOther)
+	if isHTMX(r) {
+		w.Header().Set("HX-Redirect", target)
+		return
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
 func (s *Server) practiceError(w http.ResponseWriter, r *http.Request, msg string) {
 	session, _ := auth.CurrentSession(r)
 	agents, _ := s.store.SystemAgents()
-	s.render(w, "practice", map[string]any{
+	s.render(w, r, "Practice", "practice", map[string]any{
 		"CSRF":   session.CSRFToken,
 		"Agents": agents,
 		"Code":   defaultCode,
@@ -240,7 +275,7 @@ func (s *Server) matchSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	games, _ := s.store.ListGames(matchID)
-	s.render(w, "match", map[string]any{"Match": m, "Games": games})
+	s.render(w, r, fmt.Sprintf("Match #%d", m.ID), "match", map[string]any{"Match": m, "Games": games})
 }
 
 func (s *Server) matchLogs(w http.ResponseWriter, r *http.Request) {
@@ -257,7 +292,7 @@ func (s *Server) matchLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.render(w, "logs", map[string]any{"MatchID": matchID, "Content": content})
+	s.render(w, r, fmt.Sprintf("Match #%d Logs", matchID), "logs", map[string]any{"MatchID": matchID, "Content": content})
 }
 
 func (s *Server) matchReplay(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +314,7 @@ func (s *Server) matchReplay(w http.ResponseWriter, r *http.Request) {
 		moves, _ := s.store.ListMoves(game.ID)
 		replay = append(replay, gameReplay{Game: game, Moves: moves})
 	}
-	s.render(w, "replay", map[string]any{"MatchID": matchID, "Replay": replay})
+	s.render(w, r, fmt.Sprintf("Match #%d Replay", matchID), "replay", map[string]any{"MatchID": matchID, "Replay": replay})
 }
 
 func (s *Server) authorizedMatch(w http.ResponseWriter, r *http.Request) (int64, bool) {
@@ -312,11 +347,36 @@ func readCode(r *http.Request) (string, error) {
 	return r.FormValue("source"), nil
 }
 
-func (s *Server) render(w http.ResponseWriter, name string, data any) {
+func (s *Server) render(w http.ResponseWriter, r *http.Request, title, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
+	if isHTMX(r) {
+		if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	var content bytes.Buffer
+	if err := s.templates.ExecuteTemplate(&content, name, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	session, hasSession := auth.CurrentSession(r)
+	page := viewData{
+		Title:         title,
+		Content:       template.HTML(content.String()),
+		Authenticated: hasSession,
+		Data:          data,
+	}
+	if hasSession {
+		page.CSRF = session.CSRFToken
+	}
+	if err := s.templates.ExecuteTemplate(w, "layout", page); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func isHTMX(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
 }
 
 const defaultCode = `package main
@@ -342,13 +402,4 @@ func main() {
 		_ = strings.TrimSpace(state)
 	}
 }
-`
-
-const pages = `
-{{define "login"}}<!doctype html><title>Login</title><h1>Login</h1>{{with .Error}}<pre>{{.}}</pre>{{end}}<form method="post"><input name="email" placeholder="email"><input name="password" type="password" placeholder="password"><button>Login</button></form><a href="/signup">Sign up</a>{{end}}
-{{define "signup"}}<!doctype html><title>Sign up</title><h1>Sign up</h1>{{with .Error}}<pre>{{.}}</pre>{{end}}<form method="post"><input name="name" placeholder="name"><input name="email" placeholder="email"><input name="password" type="password" placeholder="password"><button>Sign up</button></form><a href="/login">Login</a>{{end}}
-{{define "practice"}}<!doctype html><title>Practice</title><h1>Practice</h1>{{with .Error}}<pre>{{.}}</pre>{{end}}<form method="post" action="/practice/run" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><p>Opponent: <select name="opponent_agent_id">{{range .Agents}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></p><p><textarea name="source" rows="24" cols="90">{{.Code}}</textarea></p><p>or upload main.go: <input type="file" name="source_file"></p><button>Build and run practice</button></form><form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button>Logout</button></form>{{end}}
-{{define "match"}}<!doctype html><title>Match</title><h1>Match #{{.Match.ID}}</h1><p>Status: {{.Match.Status}}</p><p>Winner agent: {{if .Match.WinnerAgentID.Valid}}{{.Match.WinnerAgentID.Int64}}{{else}}draw/none{{end}}</p><p><a href="/matches/{{.Match.ID}}/logs">Logs</a> | <a href="/matches/{{.Match.ID}}/replay">Replay</a> | <a href="/practice">New practice</a></p><h2>Games</h2><ul>{{range .Games}}<li>Game #{{.ID}} result={{.Result}} moves={{.MoveCount}} duration={{.DurationMS}}ms</li>{{end}}</ul>{{end}}
-{{define "logs"}}<!doctype html><title>Logs</title><h1>Logs for match #{{.MatchID}}</h1><pre>{{.Content}}</pre><a href="/matches/{{.MatchID}}">Back</a>{{end}}
-{{define "replay"}}<!doctype html><title>Replay</title><h1>Replay for match #{{.MatchID}}</h1>{{range .Replay}}<h2>Game #{{.Game.ID}} ({{.Game.Result}})</h2><ol>{{range .Moves}}<li>seq={{.Seq}} agent={{.AgentID}} type={{.ActionType}} accepted={{.Accepted}} payload={{.ActionPayload}} duration={{if .DurationMS.Valid}}{{.DurationMS.Int64}}ms{{end}}</li>{{end}}</ol>{{end}}<a href="/matches/{{.MatchID}}">Back</a>{{end}}
 `
