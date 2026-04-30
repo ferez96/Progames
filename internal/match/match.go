@@ -2,7 +2,6 @@ package match
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -347,9 +346,4 @@ func nullableInt(value sql.NullInt64) any {
 		return nil
 	}
 	return value.Int64
-}
-
-func encodeJSON(v any) string {
-	raw, _ := json.Marshal(v)
-	return string(raw)
 }
