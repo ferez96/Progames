@@ -13,7 +13,7 @@ Players submit agents (code), which run in a controlled environment while the sy
 **Foundation (current milestone, SPECS §16)** is the base for all later work:
 
 * **Practice matches** only (no tournaments, no external queue, no multi-worker product topology).
-* **CLI** for operators/developers; **no HTTP API** in this milestone (HTTP planned later).
+* **Web frontend** (sign-in, online editor / file upload, practice-match trigger) per SPECS §16.1; **CLI** is optional for operator/developer workflows (SPECS §16.3).
 * **SQLite** plus **local disk** for source and built bot binaries; submissions via **`go build`** with `Submission.status`: `pending` → `compiled` or `invalid`.
 * **Max concurrent matches** is configurable (default **1**), enforced with a worker pool (e.g. goroutine + bounded channel), not a global lock.
 * **Versioned DB migrations** deferred to the second milestone.
@@ -29,13 +29,13 @@ Players submit agents (code), which run in a controlled environment while the sy
 
 ### Turn-based code vs code
 
-* Two **submissions** per Caro match; each **match** runs **two games** (first player swaps), then aggregate winner and tie-breaks per SPECS §4.
+* Two **agents** per Caro match (one user agent, one system agent in practice — SPECS §14.6); each **match** runs **two games** (first player swaps), then aggregate winner and tie-breaks per SPECS §4.
 * **Configurable per-move wall clock**; product default is **5 seconds** (SPECS §14.4), not a sub-second default.
 * Engine waits for each bot’s move until timeout; timeout → loss for that player in the current game (SPECS §3).
 
 ### Game engine (Caro / Gomoku)
 
-* **15×15** board, **two** players, turn-based, deterministic (SPECS §3).
+* **8×8** board, **two** players, turn-based, deterministic (SPECS §3).
 * Win = five in a row; invalid move / timeout / crash → loss; full board with no winner → **draw** (SPECS §3).
 * Bots use the **stdin/stdout** protocol (SPECS §14.3, [ADR-001](docs/engineering/decisions/ADR-001_bot-protocol.md)).
 
@@ -62,9 +62,9 @@ On failure, persist correct terminal **status** (e.g. `Match.status = failed`, S
 
 ### Foundation execution flow (SPECS §16)
 
-1. Operator submits Go source; system stores `SourceCode` and runs **`go build`**; `Submission` becomes `compiled` or `invalid`.
-2. Operator starts a **practice match** via **CLI**, passing **two submission IDs** (no deduplication—each start creates a new `Match`, SPECS §16.3).
-3. For each game in the match, the runner sends **one state line** per turn on stdin; bot replies with **one move line** on stdout (`x,y` in `1..15`, SPECS §14.2–14.3).
+1. User submits Go source via the web editor / upload (operator CLI optional); system stores `SourceCode` and runs **`go build`**; `Submission` becomes `compiled` or `invalid`.
+2. User starts a **practice match** by pairing one user agent with a system opponent agent (no deduplication—each start creates a new `Match`, SPECS §14.6, §16.3).
+3. For each game in the match, the runner sends **one state line** per turn on stdin; bot replies with **one move line** on stdout (`x,y` in `1..8`, SPECS §14.2–14.3).
 4. Engine validates moves and updates state until game end; repeat for the second game.
 5. Match outcome and logs are persisted; replay is possible from ordered `Move` records (SPECS §14.7).
 
@@ -110,18 +110,18 @@ progames/
 go test ./pkg/engine/caro/...
 ```
 
-Match runner, CLI, and persistence are specified in **SPECS §16**; wire-up lives in application code as it lands.
+Match runner, web frontend, CLI (optional), and persistence are specified in **SPECS §16**; wire-up lives in application code as it lands.
 
 ---
 
 ## Example match flow (conceptual, SPECS §4)
 
 ```text
-1. Submission A and B are compiled (or marked invalid).
-2. Operator starts a practice match with both submission IDs.
-3. Game 1: submission A moves first; play until win / loss / draw.
-4. Game 2: submission B moves first; play until win / loss / draw.
-5. Match winner from game wins; tie-break uses average move time then lexicographic submission id (SPECS §4).
+1. Agents A and B are ready (user agent backed by a `compiled` submission; system agent built-in per SPECS §14.6).
+2. User starts a practice match with both agent IDs (operator CLI optional).
+3. Game 1: agent A moves first; play until win / loss / draw.
+4. Game 2: agent B moves first; play until win / loss / draw.
+5. Match winner from game wins; tie-break uses average move time, then up to 5 rematches, then a recorded match draw (SPECS §4.4).
 6. Results, logs, and moves are persisted for inspection and replay.
 ```
 
@@ -146,7 +146,6 @@ Match runner, CLI, and persistence are specified in **SPECS §16**; wire-up live
 ## Future directions
 
 * Docker / sandbox ADR and enforcement of §14.3 **target** bar
-* HTTP API and optional WebApp (post-foundation)
 * Multi-game engine, visualization, matchmaking, multi-language agents
 * Distributed queue, workers, blob storage, Azure (SPECS §10)
 
