@@ -118,6 +118,38 @@ func (g *Game) GetBoard() *Board {
 	return g.board
 }
 
+func (g *Game) Snapshot() string {
+	if g == nil || g.board == nil {
+		return ""
+	}
+	return g.board.Snapshot()
+}
+
+func (g *Game) CurrentPlayer() string {
+	if g == nil || len(g.players) == 0 {
+		return ""
+	}
+	return g.players[g.currentPlayerIndex]
+}
+
+func (g *Game) IsOver() bool {
+	return g != nil && g.gameOver
+}
+
+func (g *Game) Result() string {
+	if g == nil {
+		return ""
+	}
+	return g.gameResult
+}
+
+func (g *Game) MoveCount() int {
+	if g == nil {
+		return 0
+	}
+	return g.turnCount
+}
+
 func (g *Game) isWinningMove(pos Position, mark rune) bool {
 	board := g.board
 	if board == nil {
