@@ -20,7 +20,11 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer st.Close()
+	t.Cleanup(func() {
+		if err := st.Close(); err != nil {
+			t.Errorf("close store: %v", err)
+		}
+	})
 	userID, err := st.CreateUser("User", "player@example.com", "hash", "salt")
 	if err != nil {
 		t.Fatalf("create user: %v", err)

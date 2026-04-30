@@ -58,3 +58,6 @@ test-results/
 # --- Artifacts ---
 artifacts/
 progames.db
+
+# --- Worktrees ---
+.claude/worktrees/
