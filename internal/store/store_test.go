@@ -19,8 +19,11 @@ func TestOpenInitializesSchemaAndSeedsSystemAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	//nolint:errcheck
-	defer st.Close()
+	t.Cleanup(func() {
+		if err := st.Close(); err != nil {
+			t.Errorf("close store: %v", err)
+		}
+	})
 
 	agents, err := st.SystemAgents()
 	if err != nil {

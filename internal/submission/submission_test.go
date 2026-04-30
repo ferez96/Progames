@@ -14,8 +14,11 @@ func TestSubmitBuildsValidGoSource(t *testing.T) {
 	t.Parallel()
 
 	st := newStore(t)
-	//nolint:errcheck
-	defer st.Close()
+	t.Cleanup(func() {
+		if err := st.Close(); err != nil {
+			t.Errorf("close store: %v", err)
+		}
+	})
 	userID, err := st.CreateUser("User", "user@example.com", "hash", "salt")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
@@ -37,8 +40,11 @@ func TestSubmitRejectsInvalidSource(t *testing.T) {
 	t.Parallel()
 
 	st := newStore(t)
-	//nolint:errcheck
-	defer st.Close()
+	t.Cleanup(func() {
+		if err := st.Close(); err != nil {
+			t.Errorf("close store: %v", err)
+		}
+	})
 	userID, err := st.CreateUser("User", "invalid@example.com", "hash", "salt")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
