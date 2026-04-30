@@ -28,7 +28,11 @@ func main() {
 	if err != nil {
 		zap.L().Fatal("open store", zap.Error(err))
 	}
-	defer st.Close()
+	defer func() {
+		if err := st.Close(); err != nil {
+			zap.L().Error("close store", zap.Error(err))
+		}
+	}()
 
 	authSvc := auth.New(st, cfg)
 	eventStore := events.New(st)

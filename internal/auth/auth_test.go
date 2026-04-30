@@ -22,7 +22,11 @@ func TestSignUpAndSignInCreatesSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer st.Close()
+	t.Cleanup(func() {
+		if err := st.Close(); err != nil {
+			t.Errorf("close store: %v", err)
+		}
+	})
 	svc := auth.New(st, cfg)
 	if _, err := svc.SignUp("User", "auth@example.com", "secret"); err != nil {
 		t.Fatalf("signup: %v", err)

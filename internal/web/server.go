@@ -336,9 +336,15 @@ func readCode(r *http.Request) (string, error) {
 	if err := r.ParseMultipartForm(1 << 20); err == nil {
 		file, _, err := r.FormFile("source_file")
 		if err == nil {
-			defer file.Close()
-			raw, err := io.ReadAll(file)
-			return string(raw), err
+			raw, readErr := io.ReadAll(file)
+			closeErr := file.Close()
+			if readErr != nil {
+				return "", readErr
+			}
+			if closeErr != nil {
+				return "", closeErr
+			}
+			return string(raw), nil
 		}
 	}
 	if err := r.ParseForm(); err != nil {
