@@ -44,7 +44,7 @@ func (s *Store) RenderExecutionLog(matchID int64, maxBytes int) error {
 		line := fmt.Sprintf("[%03d] %s %s\n", event.Seq, event.Type, event.Payload)
 		if maxBytes > 0 && b.Len()+len(line) > maxBytes {
 			omitted := b.Len() + len(line) - maxBytes
-			b.WriteString(fmt.Sprintf("\n--- log truncated (%d bytes omitted) ---", omitted))
+			fmt.Fprintf(&b, "\n--- log truncated (%d bytes omitted) ---", omitted)
 			truncated = true
 			break
 		}
@@ -61,7 +61,7 @@ func (s *Store) RenderExecutionLog(matchID int64, maxBytes int) error {
 		block := fmt.Sprintf("\n--- agent:%d stderr ---\n%s\n", log.AgentID, log.Content)
 		if maxBytes > 0 && b.Len()+len(block) > maxBytes {
 			omitted := b.Len() + len(block) - maxBytes
-			b.WriteString(fmt.Sprintf("\n--- log truncated (%d bytes omitted) ---", omitted))
+			fmt.Fprintf(&b, "\n--- log truncated (%d bytes omitted) ---", omitted)
 			truncated = true
 			break
 		}
