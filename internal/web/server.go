@@ -250,7 +250,8 @@ func (s *Server) practice(w http.ResponseWriter, r *http.Request) {
 			oppName = agentA.Name
 		}
 		outcome := "–"
-		if m.Status == "completed" {
+		switch m.Status {
+		case "completed":
 			if !m.WinnerAgentID.Valid {
 				outcome = "Draw"
 			} else if m.WinnerAgentID.Int64 == userAgentID {
@@ -258,7 +259,7 @@ func (s *Server) practice(w http.ResponseWriter, r *http.Request) {
 			} else {
 				outcome = "Loss"
 			}
-		} else if m.Status == "failed" {
+		case "failed":
 			outcome = "Failed"
 		}
 		rows = append(rows, matchRow{ID: m.ID, Status: m.Status, Outcome: outcome, OppName: oppName, DurMS: m.DurationMS})
