@@ -1,22 +1,38 @@
 {{define "login"}}
-<section class="row justify-content-center align-items-center" style="min-height: 60vh;">
+<section class="row justify-content-center align-items-center" style="min-height: 64vh;">
   <div class="col-md-6 col-lg-4">
     <div class="text-center mb-4">
-      <p class="eyebrow mb-2">Welcome back</p>
-      <h1 class="h-display display-5 mb-2">Sign in</h1>
-      <p class="text-soft mb-0">Resume practicing and competing.</p>
+      <div style="font-size:2.4rem;margin-bottom:.5rem;">🤖</div>
+      <h1 class="h-display display-5 mb-1">Welcome back</h1>
+      <p class="text-soft mb-0">Ready to run some bots?</p>
     </div>
-    <div class="glass-card tilt p-4">
-      {{with .Error}}<div class="alert alert-danger py-2">{{.}}</div>{{end}}
-      <form method="post" action="/login" hx-post="/login" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button" class="vstack gap-3">
-        <input class="form-control form-control-lg" name="email" type="email" placeholder="email" required autofocus>
-        <input class="form-control form-control-lg" name="password" type="password" placeholder="password" required>
-        <button class="btn btn-primary btn-lg" type="submit">
+    <div class="glass-card p-4">
+      {{with .Error}}
+      <div class="alert alert-danger py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>{{.}}
+      </div>
+      {{end}}
+      <form method="post" action="/login"
+            hx-post="/login" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button"
+            class="vstack gap-3">
+        <div>
+          <label class="form-label text-soft small mb-1">Email</label>
+          <input class="form-control form-control-lg" name="email" type="email"
+                 placeholder="you@example.com" autocomplete="email" required autofocus>
+        </div>
+        <div>
+          <label class="form-label text-soft small mb-1">Password</label>
+          <input class="form-control form-control-lg" name="password" type="password"
+                 placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary btn-lg mt-1" type="submit">
           <span class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
-          Sign in
+          Sign in <i class="bi bi-arrow-right ms-1"></i>
         </button>
       </form>
-      <p class="mt-3 mb-0 small text-soft text-center">No account? <a class="link-light" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Create one</a></p>
+      <p class="mt-3 mb-0 small text-soft text-center">
+        No account? <a class="link-light" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Create one — it's free</a>
+      </p>
     </div>
   </div>
 </section>

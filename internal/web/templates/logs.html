@@ -4,9 +4,20 @@
     <p class="eyebrow mb-1">Match #{{.MatchID}}</p>
     <h1 class="h-display display-6 mb-0">Execution logs</h1>
   </div>
-  <a class="btn btn-outline-light btn-sm" href="/matches/{{.MatchID}}" hx-get="/matches/{{.MatchID}}" hx-target="#app" hx-push-url="true">Back to match</a>
+  <a class="btn btn-outline-light btn-sm" href="/matches/{{.MatchID}}"
+     hx-get="/matches/{{.MatchID}}" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-arrow-left me-1"></i>Back to result
+  </a>
 </section>
+
 <div class="glass-card p-4">
-  <pre class="mb-0 p-3 rounded small" style="background: rgba(0,0,0,0.45); max-height: 70vh; overflow:auto;">{{.Content}}</pre>
+  {{if .HasLog}}
+  <pre class="mb-0 p-3 rounded small font-monospace" style="background:rgba(0,0,0,.5);max-height:70vh;overflow:auto;line-height:1.6;">{{.Content}}</pre>
+  {{else}}
+  <div class="text-center py-5">
+    <i class="bi bi-journal-x" style="font-size:2rem;color:rgba(230,231,238,.2);"></i>
+    <p class="text-soft mt-2 mb-0">No execution log available for this match.</p>
+  </div>
+  {{end}}
 </div>
 {{end}}
