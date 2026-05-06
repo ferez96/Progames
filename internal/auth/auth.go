@@ -145,6 +145,7 @@ func ClearSessionCookie(w http.ResponseWriter) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 		MaxAge:   -1,
 	})
 }
