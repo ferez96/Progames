@@ -350,7 +350,8 @@ func (s *Server) matchSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	outcome := ""
-	if m.Status == "completed" {
+	switch m.Status {
+	case "completed":
 		if !m.WinnerAgentID.Valid {
 			outcome = "draw"
 		} else if m.WinnerAgentID.Int64 == agentA.ID {
@@ -358,7 +359,7 @@ func (s *Server) matchSummary(w http.ResponseWriter, r *http.Request) {
 		} else {
 			outcome = "loss"
 		}
-	} else if m.Status == "failed" {
+	case "failed":
 		outcome = "failed"
 	}
 	games, _ := s.store.ListGames(matchID)
