@@ -1,39 +1,179 @@
 {{define "practice"}}
-<section class="d-flex align-items-center justify-content-between mb-4">
+<section class="d-flex align-items-start justify-content-between mb-4">
   <div>
-    <p class="eyebrow mb-1">Sandbox</p>
-    <h1 class="h-display display-6 mb-0">Practice arena</h1>
+    <p class="eyebrow mb-1">Practice arena</p>
+    <h1 class="h-display display-6 mb-1">Build &amp; battle</h1>
+    <p class="text-soft mb-0" style="max-width:42ch;">Write a Caro bot in Go, pick an opponent, and see how it plays. Your code runs as a subprocess — read board state from stdin, print your move to stdout.</p>
   </div>
 </section>
-{{with .Error}}<div class="alert alert-danger">{{.}}</div>{{end}}
-<div class="glass-card tilt p-4">
-  <form method="post" action="/practice/run" enctype="multipart/form-data" hx-post="/practice/run" hx-encoding="multipart/form-data" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button" class="vstack gap-4">
+
+{{with .Error}}
+<div class="alert alert-danger d-flex align-items-start gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
+  <pre class="mb-0 small" style="white-space:pre-wrap;">{{.}}</pre>
+</div>
+{{end}}
+
+<div class="glass-card p-4">
+  <form id="practice-form" method="post" action="/practice/run"
+        enctype="multipart/form-data"
+        hx-post="/practice/run" hx-encoding="multipart/form-data"
+        hx-target="#app" hx-swap="innerHTML"
+        hx-disabled-elt="button[type=submit]">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
 
-    <div class="row g-3">
+    <div class="row g-3 mb-4">
       <div class="col-md-6">
-        <label class="form-label text-soft">Opponent</label>
+        <label class="form-label text-soft small mb-1">
+          <i class="bi bi-cpu me-1"></i>Opponent
+        </label>
         <select class="form-select form-select-lg" name="opponent_agent_id">
           {{range .Agents}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
         </select>
       </div>
       <div class="col-md-6">
-        <label class="form-label text-soft">Or upload main.go</label>
-        <input class="form-control form-control-lg" type="file" name="source_file">
+        <label class="form-label text-soft small mb-1">
+          <i class="bi bi-file-code me-1"></i>Upload file
+          <span class="ms-1" style="font-size:.78em;opacity:.6;">overrides editor</span>
+        </label>
+        <div id="drop-zone" class="drop-zone" style="height:52px;display:flex;align-items:center;justify-content:center;">
+          <input id="source-file" type="file" name="source_file" accept=".go">
+          <div class="drop-zone-inner">
+            <span id="dz-label"><i class="bi bi-cloud-arrow-up me-1"></i>Drop main.go or click to browse</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div>
-      <label class="form-label text-soft">Source code</label>
-      <textarea class="form-control font-monospace" name="source" rows="18" spellcheck="false">{{.Code}}</textarea>
+    <div id="editor-wrap">
+      <div class="editor-chrome">
+        <div class="traffic">
+          <span class="t-red"></span><span class="t-yel"></span><span class="t-grn"></span>
+        </div>
+        <span class="tab"><i class="bi bi-file-code me-1"></i>main.go</span>
+        <span class="ms-1">·</span>
+        <span>Go · Caro bot</span>
+        <span class="ms-auto d-none d-md-inline">
+          <kbd id="kbd-hint">Ctrl</kbd><kbd>↵</kbd> to run
+        </span>
+      </div>
+      <textarea id="source-textarea" class="form-control font-monospace editor-body"
+                name="source" rows="20" spellcheck="false">{{.Code}}</textarea>
     </div>
 
-    <div class="d-flex justify-content-end">
+    <div class="d-flex justify-content-end align-items-center gap-3 mt-4">
+      <span class="htmx-indicator text-soft small">
+        <span class="pulse-dot"></span>Building &amp; running — up to 30s…
+      </span>
       <button class="btn btn-primary btn-lg px-4" type="submit">
         <span class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
-        Build &amp; run
+        <i class="bi bi-play-fill me-1"></i>Run bot
       </button>
     </div>
   </form>
 </div>
+
+{{if .Matches}}
+<div class="mt-5">
+  <h2 class="h6 eyebrow mb-3">Recent matches</h2>
+  <div class="glass-card p-3">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3">#</th>
+            <th>Opponent</th>
+            <th>Outcome</th>
+            <th>Duration</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Matches}}
+          <tr>
+            <td class="text-soft ps-3">#{{.ID}}</td>
+            <td>{{.OppName}}</td>
+            <td>
+              {{if eq .Outcome "Win"}}
+                <span class="badge badge-win"><i class="bi bi-trophy-fill me-1"></i>Win</span>
+              {{else if eq .Outcome "Loss"}}
+                <span class="badge badge-loss">Loss</span>
+              {{else if eq .Outcome "Draw"}}
+                <span class="badge badge-draw">Draw</span>
+              {{else if eq .Outcome "Failed"}}
+                <span class="badge badge-failed"><i class="bi bi-exclamation-triangle me-1"></i>Failed</span>
+              {{else}}
+                <span class="badge badge-draw"><span class="pulse-dot" style="width:6px;height:6px;"></span>{{.Status}}</span>
+              {{end}}
+            </td>
+            <td class="text-soft">{{if .DurMS.Valid}}{{fmtDuration .DurMS.Int64}}{{else}}–{{end}}</td>
+            <td class="text-end pe-2">
+              <a class="btn btn-outline-light btn-sm" href="/matches/{{.ID}}"
+                 hx-get="/matches/{{.ID}}" hx-target="#app" hx-push-url="true">
+                View <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}
+
+<script>
+(function () {
+  // Detect Mac for keyboard hint
+  if (/Mac/.test(navigator.platform)) {
+    document.getElementById('kbd-hint').textContent = '⌘';
+  }
+
+  // Ctrl/Cmd+Enter submits the form
+  document.getElementById('source-textarea').addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('practice-form').requestSubmit();
+    }
+  });
+
+  // File drop zone
+  const dz = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('source-file');
+  const dzLabel = document.getElementById('dz-label');
+  const editorWrap = document.getElementById('editor-wrap');
+  const textarea = document.getElementById('source-textarea');
+
+  function setFile(name) {
+    dz.classList.add('dz-chosen');
+    dzLabel.innerHTML = '<i class="bi bi-file-earmark-check me-1"></i>' + name +
+      ' <span style="opacity:.5;font-size:.85em;">· click to change</span>';
+    editorWrap.style.opacity = '0.3';
+    editorWrap.style.pointerEvents = 'none';
+    textarea.disabled = true;
+  }
+  function clearFile() {
+    dz.classList.remove('dz-chosen');
+    dzLabel.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i>Drop main.go or click to browse';
+    editorWrap.style.opacity = '';
+    editorWrap.style.pointerEvents = '';
+    textarea.disabled = false;
+  }
+
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files.length > 0) setFile(fileInput.files[0].name);
+    else clearFile();
+  });
+  dz.addEventListener('dragover', function (e) { e.preventDefault(); dz.classList.add('dz-over'); });
+  dz.addEventListener('dragleave', function () { dz.classList.remove('dz-over'); });
+  dz.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dz.classList.remove('dz-over');
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      setFile(e.dataTransfer.files[0].name);
+    }
+  });
+})();
+</script>
 {{end}}

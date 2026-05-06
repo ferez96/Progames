@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"html/template"
@@ -38,6 +39,7 @@ type storeService interface {
 	ExecutionLog(matchID int64) (string, error)
 	ListMoves(gameID int64) ([]store.Move, error)
 	UserCanViewMatch(userID, matchID int64) (bool, error)
+	ListUserMatches(userID int64) ([]store.Match, error)
 }
 
 type submissionService interface {
@@ -67,8 +69,36 @@ type viewData struct {
 //go:embed templates/*.html
 var templateFS embed.FS
 
+func fmtGameResult(r string) string {
+	switch r {
+	case "player_a_win":
+		return "X wins"
+	case "player_b_win":
+		return "O wins"
+	case "draw":
+		return "Draw"
+	default:
+		return r
+	}
+}
+
+func fmtDuration(ms int64) string {
+	if ms < 1000 {
+		return fmt.Sprintf("%dms", ms)
+	}
+	s := float64(ms) / 1000
+	if s < 60 {
+		return fmt.Sprintf("%.1fs", s)
+	}
+	return fmt.Sprintf("%dm %ds", int(s)/60, int(s)%60)
+}
+
 func New(st storeService, authSvc authService, subSvc submissionService, matchSvc matchService) *Server {
-	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
+	tmpl := template.Must(template.New("").Funcs(template.FuncMap{
+		"fmtDuration":   fmtDuration,
+		"fmtGameResult": fmtGameResult,
+		"inc":           func(i int) int { return i + 1 },
+	}).ParseFS(templateFS, "templates/*.html"))
 	return &Server{
 		auth:       authSvc,
 		store:      st,
@@ -192,17 +222,52 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+type matchRow struct {
+	ID      int64
+	Status  string
+	Outcome string // "Win" | "Loss" | "Draw" | "–"
+	OppName string
+	DurMS   sql.NullInt64
+}
+
 func (s *Server) practice(w http.ResponseWriter, r *http.Request) {
 	session, _ := auth.CurrentSession(r)
+	user, _ := auth.CurrentUser(r)
 	agents, err := s.store.SystemAgents()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	matches, _ := s.store.ListUserMatches(user.ID)
+	var rows []matchRow
+	for _, m := range matches {
+		agentA, _ := s.store.AgentByID(m.AgentAID)
+		agentB, _ := s.store.AgentByID(m.AgentBID)
+		userAgentID := agentA.ID
+		oppName := agentB.Name
+		if agentB.UserID == user.ID {
+			userAgentID = agentB.ID
+			oppName = agentA.Name
+		}
+		outcome := "–"
+		if m.Status == "completed" {
+			if !m.WinnerAgentID.Valid {
+				outcome = "Draw"
+			} else if m.WinnerAgentID.Int64 == userAgentID {
+				outcome = "Win"
+			} else {
+				outcome = "Loss"
+			}
+		} else if m.Status == "failed" {
+			outcome = "Failed"
+		}
+		rows = append(rows, matchRow{ID: m.ID, Status: m.Status, Outcome: outcome, OppName: oppName, DurMS: m.DurationMS})
+	}
 	s.render(w, r, "Practice", "practice", map[string]any{
-		"CSRF":   session.CSRFToken,
-		"Agents": agents,
-		"Code":   defaultCode,
+		"CSRF":    session.CSRFToken,
+		"Agents":  agents,
+		"Code":    defaultCode,
+		"Matches": rows,
 	})
 }
 
@@ -274,8 +339,37 @@ func (s *Server) matchSummary(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	agentA, _ := s.store.AgentByID(m.AgentAID)
+	agentB, _ := s.store.AgentByID(m.AgentBID)
+	winnerName := "Draw"
+	if m.WinnerAgentID.Valid {
+		if m.WinnerAgentID.Int64 == agentA.ID {
+			winnerName = agentA.Name
+		} else {
+			winnerName = agentB.Name
+		}
+	}
+	outcome := ""
+	if m.Status == "completed" {
+		if !m.WinnerAgentID.Valid {
+			outcome = "draw"
+		} else if m.WinnerAgentID.Int64 == agentA.ID {
+			outcome = "win"
+		} else {
+			outcome = "loss"
+		}
+	} else if m.Status == "failed" {
+		outcome = "failed"
+	}
 	games, _ := s.store.ListGames(matchID)
-	s.render(w, r, fmt.Sprintf("Match #%d", m.ID), "match", map[string]any{"Match": m, "Games": games})
+	s.render(w, r, fmt.Sprintf("Match #%d", m.ID), "match", map[string]any{
+		"Match":      m,
+		"AgentA":     agentA,
+		"AgentB":     agentB,
+		"WinnerName": winnerName,
+		"Outcome":    outcome,
+		"Games":      games,
+	})
 }
 
 func (s *Server) matchLogs(w http.ResponseWriter, r *http.Request) {
@@ -284,15 +378,72 @@ func (s *Server) matchLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	content, err := s.store.ExecutionLog(matchID)
+	hasLog := true
 	if err != nil {
 		if err == sql.ErrNoRows {
-			content = "No execution log available."
+			hasLog = false
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
-	s.render(w, r, fmt.Sprintf("Match #%d Logs", matchID), "logs", map[string]any{"MatchID": matchID, "Content": content})
+	s.render(w, r, fmt.Sprintf("Match #%d Logs", matchID), "logs", map[string]any{
+		"MatchID": matchID,
+		"Content": content,
+		"HasLog":  hasLog,
+	})
+}
+
+type movePayload struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type moveView struct {
+	Num      int
+	Player   string
+	Pos      string
+	Accepted bool
+	DurMS    sql.NullInt64
+}
+
+type gameReplayView struct {
+	ID      int64
+	Result  string
+	Moves   []moveView
+	Board   [8][8]string
+	MovesJS template.JS
+}
+
+func buildReplayView(game store.Game, moves []store.Move, agentNames map[int64]string) gameReplayView {
+	type jsMove struct {
+		X      int    `json:"x"`
+		Y      int    `json:"y"`
+		Mark   string `json:"mark"`
+		Player string `json:"player"`
+	}
+	var board [8][8]string
+	var mvs []moveView
+	var jsMoves []jsMove
+	// first player in this game gets X, second gets O
+	markFor := map[string]string{game.PlayerA: "X", game.PlayerB: "O"}
+	for i, m := range moves {
+		var p movePayload
+		_ = json.Unmarshal([]byte(m.ActionPayload), &p)
+		name := agentNames[m.AgentID]
+		pos := ""
+		mark := markFor[fmt.Sprintf("%d", m.AgentID)]
+		if p.X > 0 && p.Y > 0 {
+			pos = fmt.Sprintf("%d,%d", p.X, p.Y)
+			if m.Accepted && p.X >= 1 && p.X <= 8 && p.Y >= 1 && p.Y <= 8 {
+				board[p.Y-1][p.X-1] = mark
+			}
+		}
+		mvs = append(mvs, moveView{Num: i + 1, Player: name, Pos: pos, Accepted: m.Accepted, DurMS: m.DurationMS})
+		jsMoves = append(jsMoves, jsMove{X: p.X, Y: p.Y, Mark: mark, Player: name})
+	}
+	raw, _ := json.Marshal(jsMoves)
+	return gameReplayView{ID: game.ID, Result: game.Result, Moves: mvs, Board: board, MovesJS: template.JS(raw)}
 }
 
 func (s *Server) matchReplay(w http.ResponseWriter, r *http.Request) {
@@ -300,19 +451,23 @@ func (s *Server) matchReplay(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	m, err := s.store.MatchByID(matchID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	agentA, _ := s.store.AgentByID(m.AgentAID)
+	agentB, _ := s.store.AgentByID(m.AgentBID)
+	agentNames := map[int64]string{agentA.ID: agentA.Name, agentB.ID: agentB.Name}
 	games, err := s.store.ListGames(matchID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	type gameReplay struct {
-		Game  store.Game
-		Moves []store.Move
-	}
-	var replay []gameReplay
+	var replay []gameReplayView
 	for _, game := range games {
 		moves, _ := s.store.ListMoves(game.ID)
-		replay = append(replay, gameReplay{Game: game, Moves: moves})
+		replay = append(replay, buildReplayView(game, moves, agentNames))
 	}
 	s.render(w, r, fmt.Sprintf("Match #%d Replay", matchID), "replay", map[string]any{"MatchID": matchID, "Replay": replay})
 }
