@@ -315,6 +315,16 @@ func (s *Store) MatchByID(id int64) (Match, error) {
 	return match, err
 }
 
+func (s *Store) ListUserMatches(userID int64) ([]Match, error) {
+	var matches []Match
+	err := s.DB.Select(&matches, `
+		SELECT * FROM matches
+		WHERE agent_a_id IN (SELECT id FROM agents WHERE user_id = ?)
+		   OR agent_b_id IN (SELECT id FROM agents WHERE user_id = ?)
+		ORDER BY id DESC LIMIT 10`, userID, userID)
+	return matches, err
+}
+
 func (s *Store) UserCanViewMatch(userID, matchID int64) (bool, error) {
 	var count int
 	err := s.DB.Get(&count, `SELECT COUNT(*)

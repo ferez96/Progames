@@ -1,45 +1,115 @@
 {{define "match"}}
 <section class="d-flex align-items-center justify-content-between mb-4">
   <div>
-    <p class="eyebrow mb-1">Match</p>
-    <h1 class="h-display display-6 mb-0">#{{.Match.ID}}</h1>
+    <p class="eyebrow mb-1">Match #{{.Match.ID}}</p>
+    <h1 class="h-display display-6 mb-0">Result</h1>
   </div>
-  <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">New practice</a>
+  <a class="btn btn-outline-light btn-sm" href="/practice"
+     hx-get="/practice" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-plus-lg me-1"></i>New practice
+  </a>
 </section>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="glass-card tilt p-3 h-100">
-      <p class="eyebrow mb-1">Status</p>
-      <div class="fs-5 fw-semibold">{{.Match.Status}}</div>
-    </div>
+{{/* ── Outcome hero ── */}}
+{{if eq .Outcome "win"}}
+<div class="outcome-hero outcome-win">
+  <div class="outcome-icon">🏆</div>
+  <div class="outcome-title">You won!</div>
+  <div class="outcome-sub">{{.AgentA.Name}} beat {{.AgentB.Name}}{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+</div>
+{{else if eq .Outcome "loss"}}
+<div class="outcome-hero outcome-loss">
+  <div class="outcome-icon">💪</div>
+  <div class="outcome-title">Good fight</div>
+  <div class="outcome-sub">{{.AgentB.Name}} won this one — tweak your strategy and try again{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+</div>
+{{else if eq .Outcome "draw"}}
+<div class="outcome-hero outcome-draw">
+  <div class="outcome-icon">🤝</div>
+  <div class="outcome-title">It's a draw</div>
+  <div class="outcome-sub">Neither side could crack it{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+</div>
+{{else if eq .Outcome "failed"}}
+<div class="outcome-hero outcome-failed">
+  <div class="outcome-icon">⚠️</div>
+  <div class="outcome-title">Match failed</div>
+  <div class="outcome-sub">{{if .Match.ErrorMsg}}{{.Match.ErrorMsg}}{{else}}Something went wrong during the match{{end}}</div>
+</div>
+{{else}}
+<div class="outcome-hero outcome-pending">
+  <div class="outcome-icon"><span class="pulse-dot" style="width:16px;height:16px;vertical-align:middle;"></span></div>
+  <div class="outcome-title" style="color:var(--text-soft);">{{.Match.Status}}</div>
+  <div class="outcome-sub">The match is still running</div>
+</div>
+{{end}}
+
+{{/* ── Agents ── */}}
+<div class="d-flex align-items-center justify-content-center gap-3 mb-4 text-center">
+  <div class="glass-card px-4 py-3" style="min-width:160px;">
+    <p class="eyebrow mb-1">Your bot</p>
+    <div class="fw-semibold">{{.AgentA.Name}}</div>
+    <span class="badge mt-1" style="background:rgba(99,102,241,.2);color:#a5b4fc;font-size:.7rem;">X</span>
   </div>
-  <div class="col-md-4">
-    <div class="glass-card tilt p-3 h-100">
-      <p class="eyebrow mb-1">Winner</p>
-      <div class="fs-5 fw-semibold">{{if .Match.WinnerAgentID.Valid}}Agent #{{.Match.WinnerAgentID.Int64}}{{else}}Draw / none{{end}}</div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="glass-card tilt p-3 h-100">
-      <p class="eyebrow mb-1">Duration</p>
-      <div class="fs-5 fw-semibold">{{if .Match.DurationMS.Valid}}{{.Match.DurationMS.Int64}}ms{{else}}-{{end}}</div>
-    </div>
+  <div class="text-soft fw-bold" style="font-size:1.1rem;">vs</div>
+  <div class="glass-card px-4 py-3" style="min-width:160px;">
+    <p class="eyebrow mb-1">Opponent</p>
+    <div class="fw-semibold">{{.AgentB.Name}}</div>
+    <span class="badge mt-1" style="background:rgba(236,72,153,.18);color:#f9a8d4;font-size:.7rem;">O</span>
   </div>
 </div>
 
-<div class="d-flex gap-2 mb-4">
-  <a class="btn btn-outline-light btn-sm" href="/matches/{{.Match.ID}}/logs" hx-get="/matches/{{.Match.ID}}/logs" hx-target="#app" hx-push-url="true">View logs</a>
-  <a class="btn btn-primary btn-sm" href="/matches/{{.Match.ID}}/replay" hx-get="/matches/{{.Match.ID}}/replay" hx-target="#app" hx-push-url="true">Replay</a>
+{{/* ── Actions ── */}}
+<div class="d-flex gap-2 justify-content-center mb-4">
+  <a class="btn btn-outline-light btn-sm" href="/matches/{{.Match.ID}}/logs"
+     hx-get="/matches/{{.Match.ID}}/logs" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-terminal me-1"></i>Logs
+  </a>
+  <a class="btn btn-primary btn-sm" href="/matches/{{.Match.ID}}/replay"
+     hx-get="/matches/{{.Match.ID}}/replay" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-play-fill me-1"></i>Replay
+  </a>
 </div>
 
+{{/* ── Games ── */}}
+{{if .Games}}
 <div class="glass-card p-4">
-  <h2 class="h5 mb-3">Games</h2>
+  <h2 class="h6 eyebrow mb-3">Games</h2>
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0">
-      <thead><tr><th>#</th><th>Result</th><th>Moves</th><th>Duration</th></tr></thead>
-      <tbody>{{range .Games}}<tr><td>{{.ID}}</td><td>{{.Result}}</td><td>{{.MoveCount}}</td><td>{{.DurationMS}}ms</td></tr>{{end}}</tbody>
+      <thead>
+        <tr>
+          <th class="ps-2">Game</th>
+          <th>First player</th>
+          <th>Result</th>
+          <th>Moves</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $i, $g := .Games}}
+        <tr>
+          <td class="ps-2 text-soft">{{inc $i}}</td>
+          <td class="text-soft small">
+            {{if eq $i 0}}X plays first{{else}}O plays first{{end}}
+          </td>
+          <td>
+            {{if eq $g.Result "player_a_win"}}
+              <span class="badge badge-xwins">X wins</span>
+            {{else if eq $g.Result "player_b_win"}}
+              <span class="badge badge-owins">O wins</span>
+            {{else if eq $g.Result "draw"}}
+              <span class="badge badge-draw">Draw</span>
+            {{else}}
+              <span class="badge badge-failed">{{fmtGameResult $g.Result}}</span>
+            {{end}}
+          </td>
+          <td class="text-soft">{{$g.MoveCount}}</td>
+          <td class="text-soft">{{fmtDuration $g.DurationMS}}</td>
+        </tr>
+        {{end}}
+      </tbody>
     </table>
   </div>
 </div>
+{{end}}
 {{end}}
