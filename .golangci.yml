@@ -1,0 +1,11 @@
+version: "2"
+
+linters:
+  exclusions:
+    paths:
+      - "^artifacts/"
+
+formatters:
+  exclusions:
+    paths:
+      - "^artifacts/"
