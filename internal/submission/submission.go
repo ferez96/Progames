@@ -48,7 +48,11 @@ func (s *Service) Submit(userID int64, code string) (Result, error) {
 		return Result{}, errors.New("source must be a single Go file with package main and func main()")
 	}
 
-	sourceID := uuid.NewString()
+	sourceGUID, err := uuid.NewV7()
+	if err != nil {
+		return Result{}, fmt.Errorf("unable to create source code ID")
+	}
+	sourceID := sourceGUID.String()
 	sourcePath := s.store.SourcePath(sourceID)
 	if err := os.MkdirAll(filepath.Dir(sourcePath), 0o755); err != nil {
 		return Result{}, err
