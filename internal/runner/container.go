@@ -37,14 +37,16 @@ type ContainerRunner struct {
 	cli         *client.Client
 	imageTag    string
 	maxLine     int
+	memBytes    int64
+	nanoCPUs    int64
 	containerID string
 	attach      *dockertypes.HijackedResponse
 	stdout      *bufio.Reader
 	stderr      safeBuffer
 }
 
-func NewContainer(cli *client.Client, imageTag string, maxLine int) *ContainerRunner {
-	return &ContainerRunner{cli: cli, imageTag: imageTag, maxLine: maxLine}
+func NewContainer(cli *client.Client, imageTag string, maxLine int, memBytes, nanoCPUs int64) *ContainerRunner {
+	return &ContainerRunner{cli: cli, imageTag: imageTag, maxLine: maxLine, memBytes: memBytes, nanoCPUs: nanoCPUs}
 }
 
 func (r *ContainerRunner) Start() error {
@@ -63,8 +65,8 @@ func (r *ContainerRunner) Start() error {
 			NetworkMode: "none",
 			AutoRemove:  true,
 			Resources: container.Resources{
-				Memory:   64 * 1024 * 1024,
-				NanoCPUs: 500_000_000,
+				Memory:   r.memBytes,
+				NanoCPUs: r.nanoCPUs,
 			},
 		},
 		nil, nil, "",

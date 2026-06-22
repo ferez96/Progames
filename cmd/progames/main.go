@@ -50,7 +50,7 @@ func main() {
 	eventStore := events.New(st)
 	submissionSvc := submission.New(st, cfg, dockerCli)
 	matchSvc := matchsvc.New(st, eventStore, cfg, dockerCli)
-	matchQueue := matchsvc.NewQueue(matchSvc)
+	matchQueue := matchsvc.NewQueue(matchSvc, cfg.QueueCap)
 	server := web.New(st, authSvc, submissionSvc, matchQueue)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: server.Routes()}

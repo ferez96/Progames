@@ -10,6 +10,20 @@ services:
       PROGAMES_ADDR: ":8080"
       PROGAMES_DB: "/data/progames.db"
       PROGAMES_ARTIFACTS: "/data/artifacts"
+      PROGAMES_PER_MOVE_TIMEOUT: "5s"
+      PROGAMES_QUEUE_CAP: "4"
+      PROGAMES_BOT_MEMORY_BYTES: "67108864"   # 64 MB per bot container
+      PROGAMES_BOT_NANO_CPUS: "500000000"     # 0.5 CPU per bot container
+      PROGAMES_MAX_STDOUT_LINE_BYTES: "64"
+      PROGAMES_MAX_SOURCE_BYTES: "262144"     # 256 KB
+      PROGAMES_MAX_LOG_BYTES: "1048576"       # 1 MB
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "2.0"
+        reservations:
+          memory: 128M
     restart: unless-stopped
 
 volumes:

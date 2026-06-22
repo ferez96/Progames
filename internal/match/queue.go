@@ -7,16 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
-const queueCap = 4
-
 type Queue struct {
 	svc  *Service
 	jobs chan pendingMatch
 	wg   sync.WaitGroup
 }
 
-func NewQueue(svc *Service) *Queue {
-	q := &Queue{svc: svc, jobs: make(chan pendingMatch, queueCap)}
+func NewQueue(svc *Service, cap int) *Queue {
+	q := &Queue{svc: svc, jobs: make(chan pendingMatch, cap)}
 	q.wg.Add(1)
 	go q.work()
 	return q

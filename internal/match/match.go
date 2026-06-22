@@ -329,7 +329,7 @@ func (s *Service) startRunners(agentA, agentB store.Agent) (map[int64]runner.Age
 					return nil, nil, fmt.Errorf("build image for submission %d: %w", sub.ID, err)
 				}
 				imageTags = append(imageTags, imageTag)
-				r = runner.NewContainer(s.dockerCli, imageTag, s.cfg.MaxStdoutLineBytes)
+				r = runner.NewContainer(s.dockerCli, imageTag, s.cfg.MaxStdoutLineBytes, s.cfg.BotMemoryBytes, s.cfg.BotNanoCPUs)
 			} else {
 				if !sub.BinaryPath.Valid {
 					return nil, nil, fmt.Errorf("submission %d has no binary", sub.ID)
