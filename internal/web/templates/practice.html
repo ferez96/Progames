@@ -15,9 +15,9 @@
 {{end}}
 
 <div class="glass-card p-4">
-  <form id="practice-form" method="post" action="/practice/run"
+  <form id="practice-form" method="post" action="/api/practice/run"
         enctype="multipart/form-data"
-        hx-post="/practice/run" hx-encoding="multipart/form-data"
+        hx-post="/api/practice/run" hx-encoding="multipart/form-data"
         hx-target="#app" hx-swap="innerHTML"
         hx-disabled-elt="button[type=submit]">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">

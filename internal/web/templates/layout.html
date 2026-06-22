@@ -268,7 +268,7 @@
         <div class="navbar-nav ms-auto gap-2">
           {{if .Authenticated}}
           <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">Practice</a>
-          <form method="post" action="/logout" hx-post="/logout" hx-swap="none" class="d-inline">
+          <form method="post" action="/api/logout" hx-post="/api/logout" hx-swap="none" class="d-inline">
             <input type="hidden" name="csrf_token" value="{{.CSRF}}">
             <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
           </form>

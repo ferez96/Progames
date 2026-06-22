@@ -12,8 +12,8 @@
         <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>{{.}}
       </div>
       {{end}}
-      <form method="post" action="/signup"
-            hx-post="/signup" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button"
+      <form method="post" action="/api/signup"
+            hx-post="/api/signup" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button"
             class="vstack gap-3">
         <div>
           <label class="form-label text-soft small mb-1">Name</label>

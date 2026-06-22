@@ -111,20 +111,37 @@ func New(st storeService, authSvc authService, subSvc submissionService, matchSv
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(requestLogger)
+	r.Mount("/", s.feRoutes())
+	r.Mount("/api", s.apiRoutes())
+	return r
+}
+
+// feRoutes handles HTML page rendering.
+func (s *Server) feRoutes() http.Handler {
+	r := chi.NewRouter()
 	r.Get("/", s.home)
 	r.Get("/signup", s.signupForm)
-	r.Post("/signup", s.signup)
 	r.Get("/login", s.loginForm)
-	r.Post("/login", s.login)
-	r.Method("GET", "/debug/vars", expvar.Handler())
 	r.Group(func(r chi.Router) {
 		r.Use(s.auth.Require)
 		r.Get("/practice", s.practice)
-		r.Post("/practice/run", s.runPractice)
 		r.Get("/matches/{id}", s.matchSummary)
 		r.Get("/matches/{id}/logs", s.matchLogs)
 		r.Get("/matches/{id}/replay", s.matchReplay)
+	})
+	return r
+}
+
+// apiRoutes handles mutations and programmatic endpoints.
+func (s *Server) apiRoutes() http.Handler {
+	r := chi.NewRouter()
+	r.Method("GET", "/debug/vars", expvar.Handler())
+	r.Post("/signup", s.signup)
+	r.Post("/login", s.login)
+	r.Group(func(r chi.Router) {
+		r.Use(s.auth.Require)
 		r.Post("/logout", s.logout)
+		r.Post("/practice/run", s.runPractice)
 	})
 	return r
 }
