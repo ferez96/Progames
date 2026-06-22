@@ -47,7 +47,7 @@ type submissionService interface {
 }
 
 type matchService interface {
-	RunPractice(userAgentID, systemAgentID int64) (int64, error)
+	Enqueue(userAgentID, systemAgentID int64) (int64, error)
 }
 
 type Server struct {
@@ -302,16 +302,12 @@ func (s *Server) runPractice(w http.ResponseWriter, r *http.Request) {
 		s.practiceError(w, r, "invalid system opponent")
 		return
 	}
-	matchID, err := s.match.RunPractice(res.AgentID, opponentID)
-	target := fmt.Sprintf("/matches/%d", matchID)
-	if err != nil {
-		if isHTMX(r) {
-			w.Header().Set("HX-Redirect", target)
-			return
-		}
-		http.Redirect(w, r, target, http.StatusSeeOther)
+	matchID, err := s.match.Enqueue(res.AgentID, opponentID)
+	if err != nil && matchID == 0 {
+		s.practiceError(w, r, err.Error())
 		return
 	}
+	target := fmt.Sprintf("/matches/%d", matchID)
 	if isHTMX(r) {
 		w.Header().Set("HX-Redirect", target)
 		return

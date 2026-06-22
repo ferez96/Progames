@@ -38,7 +38,8 @@ func main() {
 	eventStore := events.New(st)
 	submissionSvc := submission.New(st, cfg)
 	matchSvc := matchsvc.New(st, eventStore, cfg)
-	server := web.New(st, authSvc, submissionSvc, matchSvc)
+	matchQueue := matchsvc.NewQueue(matchSvc)
+	server := web.New(st, authSvc, submissionSvc, matchQueue)
 
 	zap.L().Info("app.start", zap.String("addr", cfg.Addr), zap.String("db", cfg.DBPath))
 	if err := http.ListenAndServe(cfg.Addr, server.Routes()); err != nil {

@@ -28,68 +28,81 @@ func New(st *store.Store, ev *events.Store, cfg config.Config) *Service {
 }
 
 func (s *Service) RunPractice(userAgentID, systemAgentID int64) (int64, error) {
-	userAgent, err := s.store.AgentByID(userAgentID)
+	p, err := s.prepare(userAgentID, systemAgentID)
 	if err != nil {
 		return 0, err
+	}
+	s.run(p)
+	return p.matchID, nil
+}
+
+type pendingMatch struct {
+	matchID   int64
+	agentA    store.Agent
+	agentB    store.Agent
+	startedAt time.Time
+}
+
+func (s *Service) prepare(userAgentID, systemAgentID int64) (pendingMatch, error) {
+	userAgent, err := s.store.AgentByID(userAgentID)
+	if err != nil {
+		return pendingMatch{}, err
 	}
 	systemAgent, err := s.store.AgentByID(systemAgentID)
 	if err != nil {
-		return 0, err
+		return pendingMatch{}, err
 	}
 	if userAgent.Type != "user" || systemAgent.Type != "system" {
-		return 0, fmt.Errorf("practice requires one user agent and one system agent")
+		return pendingMatch{}, fmt.Errorf("practice requires one user agent and one system agent")
 	}
 	matchID, err := s.store.CreateMatch(userAgentID, systemAgentID)
 	if err != nil {
-		return 0, err
+		return pendingMatch{}, err
 	}
 	startedAt := time.Now().UTC()
 	if err := s.store.StartMatch(matchID); err != nil {
-		return 0, err
+		return pendingMatch{}, err
 	}
 	if err := s.events.Append(matchID, sql.NullInt64{}, "match.started", map[string]any{
 		"agent_a_id": userAgentID,
 		"agent_b_id": systemAgentID,
 	}); err != nil {
-		return 0, err
+		return pendingMatch{}, err
 	}
-	winner, runErr := s.runMatchAttempts(matchID, userAgent, systemAgent)
+	return pendingMatch{matchID: matchID, agentA: userAgent, agentB: systemAgent, startedAt: startedAt}, nil
+}
+
+func (s *Service) run(p pendingMatch) {
+	winner, runErr := s.runMatchAttempts(p.matchID, p.agentA, p.agentB)
 	if runErr != nil {
-		_ = s.events.Append(matchID, sql.NullInt64{}, "match.failed", map[string]any{"error": runErr.Error()})
-		_ = s.store.FailMatch(matchID, runErr.Error(), startedAt)
-		_ = s.events.RenderExecutionLog(matchID, s.cfg.MaxLogBytes)
+		_ = s.events.Append(p.matchID, sql.NullInt64{}, "match.failed", map[string]any{"error": runErr.Error()})
+		_ = s.store.FailMatch(p.matchID, runErr.Error(), p.startedAt)
+		_ = s.events.RenderExecutionLog(p.matchID, s.cfg.MaxLogBytes)
 		obs.MatchesFailed.Add(1)
 		zap.L().Warn("match.failed",
-			zap.Int64("match_id", matchID),
-			zap.Int64("dur_ms", time.Since(startedAt).Milliseconds()),
+			zap.Int64("match_id", p.matchID),
+			zap.Int64("dur_ms", time.Since(p.startedAt).Milliseconds()),
 			zap.Error(runErr),
 		)
-		return matchID, runErr
+		return
 	}
 	draw := !winner.Valid
-	if err := s.events.Append(matchID, sql.NullInt64{}, "match.completed", map[string]any{
+	_ = s.events.Append(p.matchID, sql.NullInt64{}, "match.completed", map[string]any{
 		"winner_agent_id": nullableInt(winner),
 		"draw":            draw,
-	}); err != nil {
-		return matchID, err
-	}
-	if err := s.store.CompleteMatch(matchID, winner, startedAt); err != nil {
-		return matchID, err
-	}
-	if err := s.events.RenderExecutionLog(matchID, s.cfg.MaxLogBytes); err != nil {
-		return matchID, err
-	}
+	})
+	_ = s.store.CompleteMatch(p.matchID, winner, p.startedAt)
+	_ = s.events.RenderExecutionLog(p.matchID, s.cfg.MaxLogBytes)
 	obs.MatchesCompleted.Add(1)
 	fields := []zap.Field{
-		zap.Int64("match_id", matchID),
-		zap.Int64("dur_ms", time.Since(startedAt).Milliseconds()),
+		zap.Int64("match_id", p.matchID),
+		zap.Int64("dur_ms", time.Since(p.startedAt).Milliseconds()),
 		zap.Bool("draw", draw),
 	}
 	if winner.Valid {
 		fields = append(fields, zap.Int64("winner_agent_id", winner.Int64))
 	}
 	zap.L().Info("match.completed", fields...)
-	return matchID, nil
 }
 
 func (s *Service) runMatchAttempts(matchID int64, agentA, agentB store.Agent) (sql.NullInt64, error) {
