@@ -20,10 +20,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "2.0"
+          memory: 256M   # app ~50MB idle + go build subprocess ~120MB peak
+          cpus: "2.0"    # go build is CPU-heavy; 2 cores keeps compile times short
         reservations:
-          memory: 128M
+          memory: 64M    # actual idle RSS
     restart: unless-stopped
 
 volumes:
