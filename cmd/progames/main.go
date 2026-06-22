@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/docker/docker/client"
 	"go.uber.org/zap"
@@ -48,8 +53,27 @@ func main() {
 	matchQueue := matchsvc.NewQueue(matchSvc)
 	server := web.New(st, authSvc, submissionSvc, matchQueue)
 
-	zap.L().Info("app.start", zap.String("addr", cfg.Addr), zap.String("db", cfg.DBPath))
-	if err := http.ListenAndServe(cfg.Addr, server.Routes()); err != nil {
-		zap.L().Fatal("listen", zap.Error(err))
+	srv := &http.Server{Addr: cfg.Addr, Handler: server.Routes()}
+
+	go func() {
+		zap.L().Info("app.start", zap.String("addr", cfg.Addr), zap.String("db", cfg.DBPath))
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			zap.L().Fatal("listen", zap.Error(err))
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+
+	zap.L().Info("app.shutdown")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		zap.L().Error("http.shutdown", zap.Error(err))
 	}
+
+	matchQueue.Shutdown()
+	zap.L().Info("app.stopped")
 }
