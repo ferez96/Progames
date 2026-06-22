@@ -138,16 +138,110 @@ func (s *SystemAgent) Start() error { return nil }
 
 func (s *SystemAgent) Move(state string, _ time.Duration) (MoveResult, error) {
 	start := time.Now()
-	for i, cell := range state {
-		if cell == '.' {
-			x := i%8 + 1
-			y := i/8 + 1
-			return MoveResult{RawLine: fmt.Sprintf("%d,%d", x, y), DurationMS: time.Since(start).Milliseconds()}, nil
-		}
-	}
-	return MoveResult{RawLine: "1,1", DurationMS: time.Since(start).Milliseconds()}, nil
+	x, y := systemBestMove(state)
+	return MoveResult{RawLine: fmt.Sprintf("%d,%d", x, y), DurationMS: time.Since(start).Milliseconds()}, nil
 }
 
 func (s *SystemAgent) Close() error { return nil }
 
 func (s *SystemAgent) Stderr() string { return "" }
+
+const boardSize = 8
+
+// offScore and defScore weight windows by number of marks already in them.
+// Offensive weights are higher so a winning move beats blocking.
+var offScore = [5]int{0, 10, 100, 1000, 100_000}
+var defScore = [5]int{0, 9, 90, 900, 90_000}
+
+var directions = [4][2]int{{1, 0}, {0, 1}, {1, 1}, {1, -1}}
+
+func systemBestMove(state string) (int, int) {
+	// Determine which mark belongs to the system agent.
+	var xCount, oCount int
+	for _, c := range state {
+		switch c {
+		case 'X':
+			xCount++
+		case 'O':
+			oCount++
+		}
+	}
+	var myMark, oppMark rune
+	if xCount == oCount {
+		myMark, oppMark = 'X', 'O'
+	} else {
+		myMark, oppMark = 'O', 'X'
+	}
+
+	bestVal := -1
+	bestX, bestY := -1, -1
+
+	for i, cell := range state {
+		if cell != '.' {
+			continue
+		}
+		cx, cy := i%boardSize, i/boardSize
+		val := centerBonus(cx, cy) + cellScore(state, cx, cy, myMark, oppMark)
+		if val > bestVal {
+			bestVal = val
+			bestX, bestY = cx+1, cy+1
+		}
+	}
+
+	if bestX == -1 {
+		for i, c := range state {
+			if c == '.' {
+				return i%boardSize + 1, i/boardSize + 1
+			}
+		}
+	}
+	return bestX, bestY
+}
+
+// cellScore sums scores from every window of 5 that passes through (cx, cy)
+// in all four directions.
+func cellScore(state string, cx, cy int, myMark, oppMark rune) int {
+	total := 0
+	for _, d := range directions {
+		dx, dy := d[0], d[1]
+		for offset := -4; offset <= 0; offset++ {
+			sx, sy := cx+offset*dx, cy+offset*dy
+			my, opp := 0, 0
+			valid := true
+			for i := 0; i < 5; i++ {
+				nx, ny := sx+i*dx, sy+i*dy
+				if nx < 0 || nx >= boardSize || ny < 0 || ny >= boardSize {
+					valid = false
+					break
+				}
+				switch rune(state[ny*boardSize+nx]) {
+				case myMark:
+					my++
+				case oppMark:
+					opp++
+				}
+			}
+			if !valid || (my > 0 && opp > 0) {
+				continue
+			}
+			if my > 0 {
+				total += offScore[my]
+			} else if opp > 0 {
+				total += defScore[opp]
+			}
+		}
+	}
+	return total
+}
+
+func centerBonus(x, y int) int {
+	mid := boardSize / 2
+	return (boardSize - abs(x-mid) - abs(y-mid))
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
