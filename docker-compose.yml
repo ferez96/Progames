@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - progames_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      PROGAMES_ADDR: ":8080"
+      PROGAMES_DB: "/data/progames.db"
+      PROGAMES_ARTIFACTS: "/data/artifacts"
+    restart: unless-stopped
+
+volumes:
+  progames_data:
