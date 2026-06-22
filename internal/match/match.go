@@ -145,13 +145,13 @@ func (s *Service) runTwoGames(matchID int64, agentA, agentB store.Agent, runners
 	if wins[agentB.ID] > wins[agentA.ID] {
 		return attemptOutcome{Winner: sql.NullInt64{Int64: agentB.ID, Valid: true}}, nil
 	}
-	avgA, okA := average(samples[agentA.ID])
-	avgB, okB := average(samples[agentB.ID])
+	sumA, cntA, okA := sumCount(samples[agentA.ID])
+	sumB, cntB, okB := sumCount(samples[agentB.ID])
 	if okA && okB {
-		if avgA < avgB {
+		if sumA*cntB < sumB*cntA {
 			return attemptOutcome{Winner: sql.NullInt64{Int64: agentA.ID, Valid: true}}, nil
 		}
-		if avgB < avgA {
+		if sumB*cntA < sumA*cntB {
 			return attemptOutcome{Winner: sql.NullInt64{Int64: agentB.ID, Valid: true}}, nil
 		}
 	}
@@ -330,15 +330,15 @@ func otherAgent(agentID, a, b int64) sql.NullInt64 {
 	return sql.NullInt64{Int64: a, Valid: true}
 }
 
-func average(values []int64) (float64, bool) {
+func sumCount(values []int64) (int64, int64, bool) {
 	if len(values) == 0 {
-		return 0, false
+		return 0, 0, false
 	}
 	var sum int64
-	for _, value := range values {
-		sum += value
+	for _, v := range values {
+		sum += v
 	}
-	return float64(sum) / float64(len(values)), true
+	return sum, int64(len(values)), true
 }
 
 func nullableInt(value sql.NullInt64) any {
