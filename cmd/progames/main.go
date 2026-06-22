@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/docker/docker/client"
 	"go.uber.org/zap"
 
 	"progames/internal/auth"
@@ -34,10 +35,16 @@ func main() {
 		}
 	}()
 
+	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		zap.L().Warn("docker.unavailable", zap.Error(err))
+		dockerCli = nil
+	}
+
 	authSvc := auth.New(st, cfg)
 	eventStore := events.New(st)
-	submissionSvc := submission.New(st, cfg)
-	matchSvc := matchsvc.New(st, eventStore, cfg)
+	submissionSvc := submission.New(st, cfg, dockerCli)
+	matchSvc := matchsvc.New(st, eventStore, cfg, dockerCli)
 	matchQueue := matchsvc.NewQueue(matchSvc)
 	server := web.New(st, authSvc, submissionSvc, matchQueue)
 

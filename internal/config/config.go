@@ -17,6 +17,7 @@ type Config struct {
 	MaxConcurrentMatches int
 	SessionTTL           time.Duration
 	ForceSecureCookie    bool
+	DockerImagePrefix    string
 }
 
 func Load() Config {
@@ -31,6 +32,7 @@ func Load() Config {
 		MaxConcurrentMatches: envInt("PROGAMES_MAX_CONCURRENT_MATCHES", 1),
 		SessionTTL:           envDuration("PROGAMES_SESSION_TTL", 24*time.Hour),
 		ForceSecureCookie:    envBool("PROGAMES_FORCE_SECURE_COOKIE", false),
+		DockerImagePrefix:    envString("PROGAMES_DOCKER_IMAGE_PREFIX", "progames/bot"),
 	}
 }
 

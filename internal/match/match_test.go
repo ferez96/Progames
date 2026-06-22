@@ -29,7 +29,7 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	submit := submission.New(st, cfg)
+	submit := submission.New(st, cfg, nil)
 	result, err := submit.Submit(userID, botSource)
 	if err != nil {
 		t.Fatalf("submit bot: %v", err)
@@ -45,7 +45,7 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 		t.Fatal("expected system agent")
 	}
 
-	matches := matchsvc.New(st, events.New(st), cfg)
+	matches := matchsvc.New(st, events.New(st), cfg, nil)
 	matchID, err := matches.RunPractice(result.AgentID, systemAgents[0].ID)
 	if err != nil {
 		t.Fatalf("run practice: %v", err)

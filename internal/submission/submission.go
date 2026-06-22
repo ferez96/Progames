@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
@@ -19,8 +20,9 @@ import (
 )
 
 type Service struct {
-	store *store.Store
-	cfg   config.Config
+	store     *store.Store
+	cfg       config.Config
+	dockerCli *client.Client
 }
 
 type Result struct {
@@ -32,8 +34,8 @@ type Result struct {
 	Output       string
 }
 
-func New(st *store.Store, cfg config.Config) *Service {
-	return &Service{store: st, cfg: cfg}
+func New(st *store.Store, cfg config.Config, dockerCli *client.Client) *Service {
+	return &Service{store: st, cfg: cfg, dockerCli: dockerCli}
 }
 
 func (s *Service) Submit(userID int64, code string) (Result, error) {
@@ -87,6 +89,7 @@ func (s *Service) Submit(userID int64, code string) (Result, error) {
 	}
 	obs.SubmissionsCompiled.Add(1)
 	zap.L().Info("submission.compiled", zap.Int64("submission_id", submissionID), zap.Int64("dur_ms", buildMS))
+
 	agentID, err := s.store.CreateAgent(userID, submissionID, fmt.Sprintf("Submission #%d", submissionID))
 	if err != nil {
 		return Result{}, err
@@ -104,6 +107,7 @@ func (s *Service) Submit(userID int64, code string) (Result, error) {
 func build(sourcePath, binaryPath string) (string, error) {
 	cmd := exec.Command("go", "build", "-o", binaryPath, "main.go")
 	cmd.Dir = filepath.Dir(sourcePath)
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

@@ -23,7 +23,7 @@ func TestSubmitBuildsValidGoSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	svc := submission.New(st, testConfig(t))
+	svc := submission.New(st, testConfig(t), nil)
 	result, err := svc.Submit(userID, "package main\nfunc main() {}\n")
 	if err != nil {
 		t.Fatalf("submit: %v", err)
@@ -49,7 +49,7 @@ func TestSubmitRejectsInvalidSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	svc := submission.New(st, testConfig(t))
+	svc := submission.New(st, testConfig(t), nil)
 	result, err := svc.Submit(userID, "package main\n")
 	if err == nil {
 		t.Fatalf("expected validation error, got result=%+v", result)

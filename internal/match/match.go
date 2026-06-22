@@ -1,12 +1,20 @@
 package match
 
 import (
+	"archive/tar"
+	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	dockertypes "github.com/docker/docker/api/types/build"
+	dockerimage "github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"go.uber.org/zap"
 
 	"progames/internal/config"
@@ -18,13 +26,14 @@ import (
 )
 
 type Service struct {
-	store  *store.Store
-	events *events.Store
-	cfg    config.Config
+	store     *store.Store
+	events    *events.Store
+	cfg       config.Config
+	dockerCli *client.Client
 }
 
-func New(st *store.Store, ev *events.Store, cfg config.Config) *Service {
-	return &Service{store: st, events: ev, cfg: cfg}
+func New(st *store.Store, ev *events.Store, cfg config.Config, dockerCli *client.Client) *Service {
+	return &Service{store: st, events: ev, cfg: cfg, dockerCli: dockerCli}
 }
 
 func (s *Service) RunPractice(userAgentID, systemAgentID int64) (int64, error) {
@@ -106,7 +115,7 @@ func (s *Service) run(p pendingMatch) {
 }
 
 func (s *Service) runMatchAttempts(matchID int64, agentA, agentB store.Agent) (sql.NullInt64, error) {
-	runners, err := s.startRunners(agentA, agentB)
+	runners, imageTags, err := s.startRunners(agentA, agentB)
 	if err != nil {
 		return sql.NullInt64{}, err
 	}
@@ -114,6 +123,12 @@ func (s *Service) runMatchAttempts(matchID int64, agentA, agentB store.Agent) (s
 		for agentID, r := range runners {
 			_ = s.store.UpsertAgentLog(matchID, agentID, r.Stderr(), false)
 			_ = r.Close()
+		}
+		if s.dockerCli != nil {
+			ctx := context.Background()
+			for _, tag := range imageTags {
+				_, _ = s.dockerCli.ImageRemove(ctx, tag, dockerimage.RemoveOptions{Force: true})
+			}
 		}
 	}()
 	for agentID, r := range runners {
@@ -293,31 +308,41 @@ func (s *Service) finishGame(matchID, gameID int64, gameIDNull sql.NullInt64, ga
 	return gameResult{Winner: winner}, nil
 }
 
-func (s *Service) startRunners(agentA, agentB store.Agent) (map[int64]runner.AgentRunner, error) {
+func (s *Service) startRunners(agentA, agentB store.Agent) (map[int64]runner.AgentRunner, []string, error) {
 	result := map[int64]runner.AgentRunner{}
+	var imageTags []string
 	for _, agent := range []store.Agent{agentA, agentB} {
 		var r runner.AgentRunner
 		if agent.Type == "system" {
 			r = runner.NewSystemAgent()
 		} else {
 			if !agent.SubmissionID.Valid {
-				return nil, fmt.Errorf("user agent %d has no submission", agent.ID)
+				return nil, nil, fmt.Errorf("user agent %d has no submission", agent.ID)
 			}
 			sub, err := s.store.SubmissionByID(agent.SubmissionID.Int64)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			if !sub.BinaryPath.Valid {
-				return nil, fmt.Errorf("submission %d has no binary", sub.ID)
+			if s.dockerCli != nil {
+				imageTag := fmt.Sprintf("%s:%d", s.cfg.DockerImagePrefix, sub.ID)
+				if err := buildImage(context.Background(), s.dockerCli, sub.BinaryPath.String, imageTag); err != nil {
+					return nil, nil, fmt.Errorf("build image for submission %d: %w", sub.ID, err)
+				}
+				imageTags = append(imageTags, imageTag)
+				r = runner.NewContainer(s.dockerCli, imageTag, s.cfg.MaxStdoutLineBytes)
+			} else {
+				if !sub.BinaryPath.Valid {
+					return nil, nil, fmt.Errorf("submission %d has no binary", sub.ID)
+				}
+				r = runner.NewProcess(sub.BinaryPath.String, s.cfg.MaxStdoutLineBytes)
 			}
-			r = runner.NewProcess(sub.BinaryPath.String, s.cfg.MaxStdoutLineBytes)
 		}
 		if err := r.Start(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		result[agent.ID] = r
 	}
-	return result, nil
+	return result, imageTags, nil
 }
 
 func parseMove(raw string) (caro.Position, error) {
@@ -352,6 +377,31 @@ func sumCount(values []int64) (int64, int64, bool) {
 		sum += v
 	}
 	return sum, int64(len(values)), true
+}
+
+func buildImage(ctx context.Context, cli *client.Client, binaryPath, imageTag string) error {
+	binary, err := os.ReadFile(binaryPath)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	dockerfile := "FROM scratch\nCOPY bot /bot\nENTRYPOINT [\"/bot\"]\n"
+	_ = tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: int64(len(dockerfile)), Mode: 0o644})
+	_, _ = io.WriteString(tw, dockerfile)
+	_ = tw.WriteHeader(&tar.Header{Name: "bot", Size: int64(len(binary)), Mode: 0o755})
+	_, _ = tw.Write(binary)
+	_ = tw.Close()
+	resp, err := cli.ImageBuild(ctx, &buf, dockertypes.ImageBuildOptions{
+		Tags:   []string{imageTag},
+		Remove: true,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(io.Discard, resp.Body)
+	return err
 }
 
 func nullableInt(value sql.NullInt64) any {
