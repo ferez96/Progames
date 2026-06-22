@@ -468,7 +468,11 @@ func (s *Server) matchReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	var replay []gameReplayView
 	for _, game := range games {
-		moves, _ := s.store.ListMoves(game.ID)
+		moves, err := s.store.ListMoves(game.ID)
+		if err != nil {
+			zap.L().Error("failed to list moves for game", zap.Int64("game_id", game.ID), zap.Error(err))
+			continue
+		}
 		replay = append(replay, buildReplayView(game, moves, agentNames))
 	}
 	s.render(w, r, fmt.Sprintf("Match #%d Replay", matchID), "replay", map[string]any{"MatchID": matchID, "Replay": replay})
