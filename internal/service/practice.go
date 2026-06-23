@@ -15,7 +15,7 @@ type practiceStore interface {
 }
 
 type submitter interface {
-	Submit(userID int64, code string) (submission.Result, error)
+	Submit(ctx context.Context, userID int64, code string) (submission.Result, error)
 }
 
 type matchQueue interface {
@@ -82,7 +82,7 @@ func (s *PracticeService) GetPracticeData(req GetPracticeDataRequest) (GetPracti
 }
 
 func (s *PracticeService) RunMatch(ctx context.Context, req RunMatchRequest) (RunMatchResponse, error) {
-	res, err := s.sub.Submit(req.UserID, req.Code)
+	res, err := s.sub.Submit(ctx, req.UserID, req.Code)
 	if err != nil {
 		return RunMatchResponse{}, err
 	}

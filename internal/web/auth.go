@@ -21,11 +21,11 @@ func (fe *Frontend) signupForm(w http.ResponseWriter, r *http.Request) {
 
 func (fe *Frontend) signup(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		fe.render(w, r, "Sign Up", "signup", map[string]any{"Error": err.Error()})
+		fe.renderStatus(w, r, http.StatusUnprocessableEntity, "Sign Up", "signup", map[string]any{"Error": err.Error()})
 		return
 	}
 	if _, err := fe.authSvc.SignUp(r.FormValue("name"), r.FormValue("email"), r.FormValue("password")); err != nil {
-		fe.render(w, r, "Sign Up", "signup", map[string]any{"Error": err.Error()})
+		fe.renderStatus(w, r, http.StatusUnprocessableEntity, "Sign Up", "signup", map[string]any{"Error": err.Error()})
 		return
 	}
 	if isHTMX(r) {
@@ -41,13 +41,13 @@ func (fe *Frontend) loginForm(w http.ResponseWriter, r *http.Request) {
 
 func (fe *Frontend) login(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		fe.render(w, r, "Login", "login", map[string]any{"Error": err.Error()})
+		fe.renderStatus(w, r, http.StatusUnprocessableEntity, "Login", "login", map[string]any{"Error": err.Error()})
 		return
 	}
 	_, sessionID, _, err := fe.authSvc.SignIn(r.FormValue("email"), r.FormValue("password"))
 	if err != nil {
 		obs.LoginsFailure.Add(1)
-		fe.render(w, r, "Login", "login", map[string]any{"Error": "invalid email or password"})
+		fe.renderStatus(w, r, http.StatusUnprocessableEntity, "Login", "login", map[string]any{"Error": "invalid email or password"})
 		return
 	}
 	obs.LoginsSuccess.Add(1)

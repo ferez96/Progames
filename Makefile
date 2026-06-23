@@ -22,7 +22,7 @@ test:
 	${GO} test $(shell ${GO} list ./... | grep -v '/artifacts/')
 
 lint:
-	${GO} run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run
+	${GO} run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run ./cmd/... ./internal/... ./pkg/...
 
 vuln:
 	${GO} run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...

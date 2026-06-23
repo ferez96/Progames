@@ -3,9 +3,9 @@ version: "2"
 linters:
   exclusions:
     paths:
-      - "^artifacts/"
+      - artifacts
 
 formatters:
   exclusions:
     paths:
-      - "^artifacts/"
+      - artifacts

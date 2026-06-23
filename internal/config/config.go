@@ -20,6 +20,7 @@ type Config struct {
 	SessionTTL         time.Duration
 	ForceSecureCookie  bool
 	DockerImagePrefix  string
+	GoBuilderImage     string
 }
 
 func Load() Config {
@@ -37,6 +38,7 @@ func Load() Config {
 		SessionTTL:         envDuration("PROGAMES_SESSION_TTL", 24*time.Hour),
 		ForceSecureCookie:  envBool("PROGAMES_FORCE_SECURE_COOKIE", false),
 		DockerImagePrefix:  envString("PROGAMES_DOCKER_IMAGE_PREFIX", "progames/bot"),
+		GoBuilderImage:     envString("PROGAMES_GO_BUILDER_IMAGE", "golang:1.26"),
 	}
 }
 

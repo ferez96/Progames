@@ -40,11 +40,19 @@ func fmtDuration(ms int64) string {
 }
 
 func (fe *Frontend) render(w http.ResponseWriter, r *http.Request, title, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fe.renderStatus(w, r, http.StatusOK, title, name, data)
+}
+
+func (fe *Frontend) renderStatus(w http.ResponseWriter, r *http.Request, status int, title, name string, data any) {
 	if isHTMX(r) {
-		if err := fe.templates.ExecuteTemplate(w, name, data); err != nil {
+		var buf bytes.Buffer
+		if err := fe.templates.ExecuteTemplate(&buf, name, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = w.Write(buf.Bytes())
 		return
 	}
 	var content bytes.Buffer
@@ -62,7 +70,12 @@ func (fe *Frontend) render(w http.ResponseWriter, r *http.Request, title, name s
 	if hasSession {
 		page.CSRF = session.CSRFToken
 	}
-	if err := fe.templates.ExecuteTemplate(w, "layout", page); err != nil {
+	var layout bytes.Buffer
+	if err := fe.templates.ExecuteTemplate(&layout, "layout", page); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write(layout.Bytes())
 }

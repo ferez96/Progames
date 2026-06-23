@@ -57,7 +57,7 @@ func (fe *Frontend) runPractice(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) practiceError(w http.ResponseWriter, r *http.Request, userID int64, msg string) {
 	session, _ := auth.CurrentSession(r)
 	resp, _ := fe.practiceSvc.GetPracticeData(service.GetPracticeDataRequest{UserID: userID})
-	fe.render(w, r, "Practice", "practice", toPracticePage(resp, userID, session.CSRFToken, defaultCode, msg))
+	fe.renderStatus(w, r, http.StatusUnprocessableEntity, "Practice", "practice", toPracticePage(resp, userID, session.CSRFToken, defaultCode, msg))
 }
 
 func readCode(r *http.Request) (string, error) {

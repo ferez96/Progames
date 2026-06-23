@@ -290,6 +290,16 @@
 
   <script>
     (function () {
+      // Allow HTMX to swap 422 responses so server-rendered form errors are displayed.
+      // Guard on Content-Type so non-HTML 422s (e.g. future JSON API errors) are not injected.
+      document.body.addEventListener('htmx:beforeSwap', function (evt) {
+        if (evt.detail.xhr.status === 422 &&
+            (evt.detail.xhr.getResponseHeader('Content-Type') || '').includes('text/html')) {
+          evt.detail.shouldSwap = true;
+          evt.detail.isError = false;
+        }
+      });
+
       const topbar = document.getElementById('topbar');
       const onScroll = () => topbar.classList.toggle('scrolled', window.scrollY > 8);
       onScroll();

@@ -1,6 +1,7 @@
 package matchexec_test
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 	submit := submission.New(st, cfg, nil)
-	result, err := submit.Submit(userID, botSource)
+	result, err := submit.Submit(context.Background(), userID, botSource)
 	if err != nil {
 		t.Fatalf("submit bot: %v", err)
 	}
