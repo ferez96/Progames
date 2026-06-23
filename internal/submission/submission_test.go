@@ -6,12 +6,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moby/moby/client"
+
 	"progames/internal/config"
 	"progames/internal/store"
 	"progames/internal/submission"
 )
 
 func TestSubmitBuildsValidGoSource(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker")
+	}
 	t.Parallel()
 
 	st := newStore(t)
@@ -24,7 +29,7 @@ func TestSubmitBuildsValidGoSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	svc := submission.New(st, testConfig(t), nil)
+	svc := submission.New(st, testConfig(t), newDockerClient(t))
 	result, err := svc.Submit(context.Background(), userID, "package main\nfunc main() {}\n")
 	if err != nil {
 		t.Fatalf("submit: %v", err)
@@ -57,6 +62,20 @@ func TestSubmitRejectsInvalidSource(t *testing.T) {
 	}
 }
 
+func newDockerClient(t *testing.T) *client.Client {
+	t.Helper()
+	cli, err := client.New(client.FromEnv)
+	if err != nil {
+		t.Skipf("docker unavailable: %v", err)
+	}
+	if _, err := cli.Ping(context.Background(), client.PingOptions{}); err != nil {
+		_ = cli.Close()
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+	t.Cleanup(func() { _ = cli.Close() })
+	return cli
+}
+
 func newStore(t *testing.T) *store.Store {
 	t.Helper()
 	st, err := store.Open(testConfig(t))
@@ -77,5 +96,6 @@ func testConfig(t *testing.T) config.Config {
 		MaxStdoutLineBytes: 64 * 1024,
 		MaxLogBytes:        1024 * 1024,
 		SessionTTL:         time.Hour,
+		GoBuilderImage:     "golang:1.26",
 	}
 }

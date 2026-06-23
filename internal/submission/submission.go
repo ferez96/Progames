@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -112,37 +110,9 @@ func (s *Service) Submit(ctx context.Context, userID int64, code string) (Result
 
 func (s *Service) build(ctx context.Context, sourcePath, binaryPath string) (string, error) {
 	if s.dockerCli == nil {
-		return buildWithProcess(ctx, sourcePath, binaryPath)
+		return "", fmt.Errorf("no Docker client: cannot compile without Go toolchain")
 	}
 	return buildWithDocker(ctx, s.dockerCli, s.cfg.GoBuilderImage, sourcePath, binaryPath)
-}
-
-func buildWithProcess(ctx context.Context, sourcePath, binaryPath string) (string, error) {
-	src, err := os.ReadFile(sourcePath)
-	if err != nil {
-		return "", fmt.Errorf("read source: %w", err)
-	}
-
-	dir, err := os.MkdirTemp("", "progames-build-*")
-	if err != nil {
-		return "", fmt.Errorf("create build dir: %w", err)
-	}
-	defer os.RemoveAll(dir)
-
-	goVer := strings.TrimPrefix(runtime.Version(), "go")
-	gomod := "module bot\n\ngo " + goVer + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(gomod), 0o644); err != nil {
-		return "", fmt.Errorf("write go.mod: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "main.go"), src, 0o644); err != nil {
-		return "", fmt.Errorf("write main.go: %w", err)
-	}
-
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	out, err := cmd.CombinedOutput()
-	return string(out), err
 }
 
 // goVersionFromImage extracts the Go language version from an image tag like

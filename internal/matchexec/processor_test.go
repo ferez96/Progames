@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moby/moby/client"
+
 	"progames/internal/config"
 	"progames/internal/events"
 	"progames/internal/matchexec"
@@ -15,9 +17,14 @@ import (
 )
 
 func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker")
+	}
 	t.Parallel()
 
 	cfg := testConfig(t)
+	cli := newDockerClient(t)
+
 	st, err := store.Open(cfg)
 	if err != nil {
 		t.Fatalf("open store: %v", err)
@@ -31,7 +38,7 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	submit := submission.New(st, cfg, nil)
+	submit := submission.New(st, cfg, cli)
 	result, err := submit.Submit(context.Background(), userID, botSource)
 	if err != nil {
 		t.Fatalf("submit bot: %v", err)
@@ -47,7 +54,7 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 		t.Fatal("expected system agent")
 	}
 
-	proc := matchexec.NewProcessor(st, events.New(st), cfg, nil)
+	proc := matchexec.NewProcessor(st, events.New(st), cfg, cli)
 	matchID, err := proc.Process(service.MatchJob{UserAgentID: result.AgentID, SystemAgentID: systemAgents[0].ID})
 	if err != nil {
 		t.Fatalf("run practice: %v", err)
@@ -85,6 +92,20 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 	}
 }
 
+func newDockerClient(t *testing.T) *client.Client {
+	t.Helper()
+	cli, err := client.New(client.FromEnv)
+	if err != nil {
+		t.Skipf("docker unavailable: %v", err)
+	}
+	if _, err := cli.Ping(context.Background(), client.PingOptions{}); err != nil {
+		_ = cli.Close()
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+	t.Cleanup(func() { _ = cli.Close() })
+	return cli
+}
+
 func testConfig(t *testing.T) config.Config {
 	t.Helper()
 	base := t.TempDir()
@@ -96,6 +117,8 @@ func testConfig(t *testing.T) config.Config {
 		MaxStdoutLineBytes: 64 * 1024,
 		MaxLogBytes:        1024 * 1024,
 		SessionTTL:         time.Hour,
+		GoBuilderImage:     "golang:1.26",
+		DockerImagePrefix:  "progames/bot",
 	}
 }
 
