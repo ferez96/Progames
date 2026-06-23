@@ -101,7 +101,7 @@ flowchart LR
 
   EB[(Event Bus)]
 
-  ME[Match Executor (Worker)]
+  ME["Match Executor (Worker)"]
 
   subgraph Storage
     DB[(RDBMS)]
