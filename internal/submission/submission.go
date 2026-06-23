@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/google/uuid"
+	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
 	"progames/internal/config"

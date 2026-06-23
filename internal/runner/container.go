@@ -10,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 )
 
 type safeBuffer struct {
@@ -40,7 +39,7 @@ type ContainerRunner struct {
 	memBytes    int64
 	nanoCPUs    int64
 	containerID string
-	attach      *dockertypes.HijackedResponse
+	attach      *client.ContainerAttachResult
 	stdout      *bufio.Reader
 	stderr      safeBuffer
 }
@@ -52,8 +51,8 @@ func NewContainer(cli *client.Client, imageTag string, maxLine int, memBytes, na
 func (r *ContainerRunner) Start() error {
 	ctx := context.Background()
 
-	created, err := r.cli.ContainerCreate(ctx,
-		&container.Config{
+	created, err := r.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
 			Image:        r.imageTag,
 			AttachStdin:  true,
 			AttachStdout: true,
@@ -61,7 +60,7 @@ func (r *ContainerRunner) Start() error {
 			OpenStdin:    true,
 			StdinOnce:    false,
 		},
-		&container.HostConfig{
+		HostConfig: &container.HostConfig{
 			NetworkMode: "none",
 			AutoRemove:  true,
 			Resources: container.Resources{
@@ -69,14 +68,13 @@ func (r *ContainerRunner) Start() error {
 				NanoCPUs: r.nanoCPUs,
 			},
 		},
-		nil, nil, "",
-	)
+	})
 	if err != nil {
 		return fmt.Errorf("container create: %w", err)
 	}
 	r.containerID = created.ID
 
-	attach, err := r.cli.ContainerAttach(ctx, r.containerID, container.AttachOptions{
+	attach, err := r.cli.ContainerAttach(ctx, r.containerID, client.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
 		Stdout: true,
@@ -87,7 +85,7 @@ func (r *ContainerRunner) Start() error {
 	}
 	r.attach = &attach
 
-	if err := r.cli.ContainerStart(ctx, r.containerID, container.StartOptions{}); err != nil {
+	if _, err := r.cli.ContainerStart(ctx, r.containerID, client.ContainerStartOptions{}); err != nil {
 		r.attach.Close()
 		return fmt.Errorf("container start: %w", err)
 	}
@@ -147,7 +145,7 @@ func (r *ContainerRunner) Close() error {
 	}
 	ctx := context.Background()
 	timeout := 0
-	_ = r.cli.ContainerStop(ctx, r.containerID, container.StopOptions{Timeout: &timeout})
+	_, _ = r.cli.ContainerStop(ctx, r.containerID, client.ContainerStopOptions{Timeout: &timeout})
 	return nil
 }
 

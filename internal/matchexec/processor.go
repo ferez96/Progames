@@ -12,9 +12,7 @@ import (
 	"strings"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types/build"
-	dockerimage "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
 	"progames/internal/config"
@@ -147,7 +145,7 @@ func (p *Processor) runMatchAttempts(matchID int64, agentA, agentB store.Agent) 
 		if p.dockerCli != nil {
 			ctx := context.Background()
 			for _, tag := range imageTags {
-				_, _ = p.dockerCli.ImageRemove(ctx, tag, dockerimage.RemoveOptions{Force: true})
+				_, _ = p.dockerCli.ImageRemove(ctx, tag, client.ImageRemoveOptions{Force: true})
 			}
 		}
 	}()
@@ -412,7 +410,7 @@ func buildImage(ctx context.Context, cli *client.Client, binaryPath, imageTag st
 	_ = tw.WriteHeader(&tar.Header{Name: "bot", Size: int64(len(binary)), Mode: 0o755})
 	_, _ = tw.Write(binary)
 	_ = tw.Close()
-	resp, err := cli.ImageBuild(ctx, &buf, dockertypes.ImageBuildOptions{
+	resp, err := cli.ImageBuild(ctx, &buf, client.ImageBuildOptions{
 		Tags:   []string{imageTag},
 		Remove: true,
 	})

@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
 	"progames/internal/auth"
