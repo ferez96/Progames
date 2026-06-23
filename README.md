@@ -32,7 +32,7 @@ Not yet built: tournaments, versioned DB migrations, multi-language support.
 | HTTP router | [chi](https://github.com/go-chi/chi) |
 | Frontend interaction | [HTMX](https://htmx.org) |
 | Board rendering | [SVG.js v3](https://svgjs.dev) |
-| Persistence | SQLite via [sqlx](https://github.com/jmoikit/sqlx) |
+| Persistence | SQLite via [sqlx](https://github.com/jmoiron/sqlx) |
 | Structured logging | [zap](https://github.com/uber-go/zap) |
 | Bot isolation | Docker (process runner as fallback) |
 | Containerisation | Docker + docker-compose |
