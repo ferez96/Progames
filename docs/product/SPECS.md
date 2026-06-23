@@ -510,9 +510,11 @@ Allowed values and typical transitions:
 
 ---
 
-## 16. Foundation milestone (LOCKED)
+## 16. Foundation milestone (LOCKED) — DELIVERED
 
 This milestone is the **base** for all later work: Caro **practice** matches end-to-end with **persistence**, **execution logs**, and **basic replay** (§14.7). If §16 conflicts with another section on **foundation scope only**, **§16 wins** for what ships first; full MVP remains defined by §12 and the rest of §14.
+
+**Delivered.** All §16.1 scope is shipped: web auth, editor/upload, practice match trigger, match/game/replay views, async match queue with graceful shutdown, Docker bot isolation (process runner fallback). See `docs/engineering/architecture/system-overview.md` for implementation detail.
 
 ### 16.1 In scope
 
