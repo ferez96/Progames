@@ -9,9 +9,6 @@ on:
       - "go.mod"
       - "go.sum"
       - ".golangci.yml"
-      - ".golangci.yaml"
-      - ".golangci.toml"
-      - ".golangci.json"
       - ".github/workflows/lint.yml"
   pull_request:
     branches:
@@ -21,9 +18,6 @@ on:
       - "go.mod"
       - "go.sum"
       - ".golangci.yml"
-      - ".golangci.yaml"
-      - ".golangci.toml"
-      - ".golangci.json"
       - ".github/workflows/lint.yml"
 
 permissions:
@@ -36,13 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.12.2
