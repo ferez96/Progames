@@ -40,7 +40,7 @@ func main() {
 		}
 	}()
 
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := client.New(client.FromEnv)
 	if err != nil {
 		zap.L().Warn("docker.unavailable", zap.Error(err))
 		dockerCli = nil

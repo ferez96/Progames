@@ -417,7 +417,7 @@ func buildImage(ctx context.Context, cli *client.Client, binaryPath, imageTag st
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, err = io.Copy(io.Discard, resp.Body)
 	return err
 }

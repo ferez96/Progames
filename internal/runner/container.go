@@ -92,7 +92,7 @@ func (r *ContainerRunner) Start() error {
 
 	stdoutR, stdoutW := io.Pipe()
 	go func() {
-		defer stdoutW.Close()
+		defer func() { _ = stdoutW.Close() }()
 		_, _ = stdcopy.StdCopy(stdoutW, &r.stderr, attach.Reader)
 	}()
 
