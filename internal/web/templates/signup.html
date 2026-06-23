@@ -16,18 +16,18 @@
             hx-post="/api/signup" hx-target="#app" hx-swap="innerHTML" hx-disabled-elt="button"
             class="vstack gap-3">
         <div>
-          <label class="form-label text-soft small mb-1">Name</label>
-          <input class="form-control form-control-lg" name="name" type="text"
+          <label for="name" class="form-label text-soft small mb-1">Name</label>
+          <input id="name" class="form-control form-control-lg" name="name" type="text"
                  placeholder="Your name" autocomplete="name" required autofocus>
         </div>
         <div>
-          <label class="form-label text-soft small mb-1">Email</label>
-          <input class="form-control form-control-lg" name="email" type="email"
+          <label for="email" class="form-label text-soft small mb-1">Email</label>
+          <input id="email" class="form-control form-control-lg" name="email" type="email"
                  placeholder="you@example.com" autocomplete="email" required>
         </div>
         <div>
-          <label class="form-label text-soft small mb-1">Password</label>
-          <input class="form-control form-control-lg" name="password" type="password"
+          <label for="password" class="form-label text-soft small mb-1">Password</label>
+          <input id="password" class="form-control form-control-lg" name="password" type="password"
                  placeholder="Choose a strong password" autocomplete="new-password" required>
         </div>
         <button class="btn btn-primary btn-lg mt-1" type="submit">

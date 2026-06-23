@@ -18,6 +18,7 @@
     <div class="d-flex flex-column gap-2">
       {{range $i, $g := .Games}}
       <button class="btn btn-outline-light btn-sm text-start w-100{{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}} active{{end}}"
+              {{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}}aria-current="true"{{end}}
               hx-get="/matches/{{$.MatchID}}/games/{{$g.ID}}/replay"
               hx-target="#replay-center"
               hx-swap="innerHTML">
@@ -41,4 +42,21 @@
   </div>
 
 </div>
+
+<script>
+(function () {
+  const sidebar = document.querySelector('.d-flex.flex-column.gap-2');
+  if (!sidebar) return;
+  document.getElementById('replay-center').addEventListener('htmx:afterSwap', function (e) {
+    const gameId = e.detail.elt.querySelector('[data-game-id]')?.dataset.gameId;
+    if (!gameId) return;
+    sidebar.querySelectorAll('button').forEach(function (btn) {
+      const active = btn.getAttribute('hx-get')?.endsWith('/' + gameId + '/replay');
+      btn.classList.toggle('active', !!active);
+      if (active) btn.setAttribute('aria-current', 'true');
+      else btn.removeAttribute('aria-current');
+    });
+  });
+})();
+</script>
 {{end}}

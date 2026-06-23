@@ -12,14 +12,14 @@
       </h2>
     </div>
     <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-outline-light btn-sm" title="Previous move (←)" onclick="stepGame('{{.ID}}',-1)">
-        <i class="bi bi-skip-start-fill"></i>
+      <button class="btn btn-outline-light btn-sm" aria-label="Previous move" onclick="stepGame('{{.ID}}',-1)">
+        <i class="bi bi-skip-start-fill" aria-hidden="true"></i>
       </button>
-      <button id="play-btn-{{.ID}}" class="btn btn-outline-light btn-sm px-3" onclick="togglePlay('{{.ID}}')">
-        <i class="bi bi-play-fill"></i>
+      <button id="play-btn-{{.ID}}" class="btn btn-outline-light btn-sm px-3" aria-label="Play" onclick="togglePlay('{{.ID}}')">
+        <i class="bi bi-play-fill" aria-hidden="true"></i>
       </button>
-      <button class="btn btn-outline-light btn-sm" title="Next move (→)" onclick="stepGame('{{.ID}}',1)">
-        <i class="bi bi-skip-end-fill"></i>
+      <button class="btn btn-outline-light btn-sm" aria-label="Next move" onclick="stepGame('{{.ID}}',1)">
+        <i class="bi bi-skip-end-fill" aria-hidden="true"></i>
       </button>
       <span id="step-label-{{.ID}}" class="text-soft small ms-1" style="min-width:6ch;text-align:right;">0 / {{len .Moves}}</span>
     </div>
@@ -29,7 +29,7 @@
 
     {{/* ── Board ── */}}
     <div class="col-lg-5">
-      <div id="board-{{.ID}}"></div>
+      <div id="board-{{.ID}}" aria-hidden="true"></div>
       <div class="d-flex gap-3 mt-3 small text-soft">
         <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/></svg>Black — {{.BlackPlayer}}</span>
         <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#e0e0e0" stroke="rgba(0,0,0,.45)" stroke-width="1"/></svg>White — {{.WhitePlayer}}</span>
@@ -208,12 +208,14 @@
     playing = !playing;
     const btn = document.getElementById('play-btn-' + GID);
     if (playing) {
-      btn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+      btn.innerHTML = '<i class="bi bi-pause-fill" aria-hidden="true"></i>';
+      btn.setAttribute('aria-label', 'Pause');
       if (step >= moves.length) step = 0;
       timer = setInterval(function () {
         if (step >= moves.length) {
           playing = false;
-          btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+          btn.innerHTML = '<i class="bi bi-play-fill" aria-hidden="true"></i>';
+          btn.setAttribute('aria-label', 'Play');
           clearInterval(timer);
           return;
         }
@@ -222,7 +224,8 @@
       }, 700);
     } else {
       clearInterval(timer);
-      btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+      btn.innerHTML = '<i class="bi bi-play-fill" aria-hidden="true"></i>';
+      btn.setAttribute('aria-label', 'Play');
     }
   };
 

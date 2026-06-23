@@ -24,15 +24,15 @@
 
     <div class="row g-3 mb-4">
       <div class="col-md-6">
-        <label class="form-label text-soft small mb-1">
+        <label for="opponent-agent-id" class="form-label text-soft small mb-1">
           <i class="bi bi-cpu me-1"></i>Opponent
         </label>
-        <select class="form-select form-select-lg" name="opponent_agent_id">
+        <select id="opponent-agent-id" class="form-select form-select-lg" name="opponent_agent_id">
           {{range .Agents}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
         </select>
       </div>
       <div class="col-md-6">
-        <label class="form-label text-soft small mb-1">
+        <label for="source-file" class="form-label text-soft small mb-1">
           <i class="bi bi-file-code me-1"></i>Upload file
           <span class="ms-1" style="font-size:.78em;opacity:.6;">overrides editor</span>
         </label>
@@ -58,7 +58,8 @@
         </span>
       </div>
       <textarea id="source-textarea" class="form-control font-monospace editor-body"
-                name="source" rows="20" spellcheck="false">{{.Code}}</textarea>
+                name="source" rows="20" spellcheck="false"
+                aria-label="Bot source code (Go)">{{.Code}}</textarea>
     </div>
 
     <div class="d-flex justify-content-end align-items-center gap-3 mt-4">
@@ -125,7 +126,7 @@
 <script>
 (function () {
   // Detect Mac for keyboard hint
-  if (/Mac/.test(navigator.platform)) {
+  if (/Mac/.test(navigator.userAgent)) {
     document.getElementById('kbd-hint').textContent = '⌘';
   }
 
