@@ -1,4 +1,4 @@
-package match_test
+package matchexec_test
 
 import (
 	"path/filepath"
@@ -7,7 +7,8 @@ import (
 
 	"progames/internal/config"
 	"progames/internal/events"
-	matchsvc "progames/internal/match"
+	"progames/internal/matchexec"
+	"progames/internal/service"
 	"progames/internal/store"
 	"progames/internal/submission"
 )
@@ -45,8 +46,8 @@ func TestRunPracticeCreatesEventsMovesAndLog(t *testing.T) {
 		t.Fatal("expected system agent")
 	}
 
-	matches := matchsvc.New(st, events.New(st), cfg, nil)
-	matchID, err := matches.RunPractice(result.AgentID, systemAgents[0].ID)
+	proc := matchexec.NewProcessor(st, events.New(st), cfg, nil)
+	matchID, err := proc.Process(service.MatchJob{UserAgentID: result.AgentID, SystemAgentID: systemAgents[0].ID})
 	if err != nil {
 		t.Fatalf("run practice: %v", err)
 	}

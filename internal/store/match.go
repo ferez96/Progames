@@ -26,24 +26,21 @@ func (s *Store) CreateMatch(agentAID, agentBID int64) (int64, error) {
 	return res.LastInsertId()
 }
 
-func (s *Store) StartMatch(id int64) error {
-	_, err := s.DB.Exec(`UPDATE matches SET status = 'running', started_at = ? WHERE id = ?`, time.Now().UTC(), id)
+func (s *Store) StartMatch(id int64, startedAt time.Time) error {
+	_, err := s.DB.Exec(`UPDATE matches SET status = 'running', started_at = ?
+		WHERE id = ? AND status = 'queued'`, startedAt, id)
 	return err
 }
 
-func (s *Store) CompleteMatch(id int64, winnerAgentID sql.NullInt64, startedAt time.Time) error {
-	endedAt := time.Now().UTC()
-	duration := endedAt.Sub(startedAt).Milliseconds()
-	_, err := s.DB.Exec(`UPDATE matches SET status = 'completed', winner_agent_id = ?, ended_at = ?, duration_ms = ? WHERE id = ?`,
-		winnerAgentID, endedAt, duration, id)
+func (s *Store) CompleteMatch(id int64, winnerAgentID sql.NullInt64, endedAt time.Time, durationMS int64) error {
+	_, err := s.DB.Exec(`UPDATE matches SET status = 'completed', winner_agent_id = ?, ended_at = ?, duration_ms = ?
+		WHERE id = ? AND status = 'running'`, winnerAgentID, endedAt, durationMS, id)
 	return err
 }
 
-func (s *Store) FailMatch(id int64, msg string, startedAt time.Time) error {
-	endedAt := time.Now().UTC()
-	duration := endedAt.Sub(startedAt).Milliseconds()
-	_, err := s.DB.Exec(`UPDATE matches SET status = 'failed', error_msg = ?, ended_at = ?, duration_ms = ? WHERE id = ?`,
-		msg, endedAt, duration, id)
+func (s *Store) FailMatch(id int64, msg string, endedAt time.Time, durationMS int64) error {
+	_, err := s.DB.Exec(`UPDATE matches SET status = 'failed', error_msg = ?, ended_at = ?, duration_ms = ?
+		WHERE id = ? AND status NOT IN ('completed', 'failed')`, msg, endedAt, durationMS, id)
 	return err
 }
 

@@ -23,23 +23,9 @@ type viewData struct {
 
 func newTemplates() *template.Template {
 	return template.Must(template.New("").Funcs(template.FuncMap{
-		"fmtDuration":   fmtDuration,
-		"fmtGameResult": fmtGameResult,
-		"inc":           func(i int) int { return i + 1 },
+		"fmtDuration": fmtDuration,
+		"inc":         func(i int) int { return i + 1 },
 	}).ParseFS(templateFS, "templates/*.html"))
-}
-
-func fmtGameResult(r string) string {
-	switch r {
-	case "player_a_win":
-		return "X wins"
-	case "player_b_win":
-		return "O wins"
-	case "draw":
-		return "Draw"
-	default:
-		return r
-	}
 }
 
 func fmtDuration(ms int64) string {
@@ -53,16 +39,16 @@ func fmtDuration(ms int64) string {
 	return fmt.Sprintf("%dm %ds", int(s)/60, int(s)%60)
 }
 
-func (s *Server) render(w http.ResponseWriter, r *http.Request, title, name string, data any) {
+func (fe *Frontend) render(w http.ResponseWriter, r *http.Request, title, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if isHTMX(r) {
-		if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
+		if err := fe.templates.ExecuteTemplate(w, name, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 	var content bytes.Buffer
-	if err := s.templates.ExecuteTemplate(&content, name, data); err != nil {
+	if err := fe.templates.ExecuteTemplate(&content, name, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -76,7 +62,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, title, name stri
 	if hasSession {
 		page.CSRF = session.CSRFToken
 	}
-	if err := s.templates.ExecuteTemplate(w, "layout", page); err != nil {
+	if err := fe.templates.ExecuteTemplate(w, "layout", page); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

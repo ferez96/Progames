@@ -1,0 +1,241 @@
+{{define "game_replay"}}
+<div class="glass-card p-4 mb-4" data-game-id="{{.ID}}">
+
+  {{/* ── Header ── */}}
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="h5 mb-0">
+        Game {{.ID}}
+        <span class="ms-2">
+          <span class="badge {{.ResultBadgeClass}}">{{if .ResultHasTrophy}}<i class="bi bi-trophy-fill me-1"></i>{{end}}{{.ResultLabel}}</span>
+        </span>
+      </h2>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-light btn-sm" title="Previous move (←)" onclick="stepGame('{{.ID}}',-1)">
+        <i class="bi bi-skip-start-fill"></i>
+      </button>
+      <button id="play-btn-{{.ID}}" class="btn btn-outline-light btn-sm px-3" onclick="togglePlay('{{.ID}}')">
+        <i class="bi bi-play-fill"></i>
+      </button>
+      <button class="btn btn-outline-light btn-sm" title="Next move (→)" onclick="stepGame('{{.ID}}',1)">
+        <i class="bi bi-skip-end-fill"></i>
+      </button>
+      <span id="step-label-{{.ID}}" class="text-soft small ms-1" style="min-width:6ch;text-align:right;">0 / {{len .Moves}}</span>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    {{/* ── Board ── */}}
+    <div class="col-lg-5">
+      <div id="board-{{.ID}}"></div>
+      <div class="d-flex gap-3 mt-3 small text-soft">
+        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/></svg>Black — {{.BlackPlayer}}</span>
+        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#e0e0e0" stroke="rgba(0,0,0,.45)" stroke-width="1"/></svg>White — {{.WhitePlayer}}</span>
+        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/><circle cx="7" cy="7" r="3" fill="#e53935"/></svg>Last move</span>
+      </div>
+    </div>
+
+    {{/* ── Move list ── */}}
+    <div class="col-lg-7">
+      {{if .Moves}}
+      <div id="movelist-{{.ID}}" class="table-responsive" style="max-height:340px;overflow-y:auto;">
+        <table class="table table-sm align-middle mb-0">
+          <thead style="position:sticky;top:0;background:rgba(7,8,13,0.95);z-index:1;">
+            <tr>
+              <th class="ps-2">#</th>
+              <th>Player</th>
+              <th>Position</th>
+              <th>Status</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Moves}}
+            <tr id="mrow-{{$.ID}}-{{.Num}}" style="transition:background 120ms ease;">
+              <td class="ps-2 text-soft">{{.Num}}</td>
+              <td class="small">{{.Player}}</td>
+              <td class="font-monospace small">{{if .Pos}}{{.Pos}}{{else}}<span class="text-soft">–</span>{{end}}</td>
+              <td>
+                {{if .Accepted}}
+                  <span class="badge" style="background:rgba(34,211,238,.15);color:#67e8f9;border:1px solid rgba(34,211,238,.25);">
+                    <i class="bi bi-check2"></i>
+                  </span>
+                {{else}}
+                  <span class="badge badge-failed"><i class="bi bi-x"></i> Invalid</span>
+                {{end}}
+              </td>
+              <td class="text-soft small">{{if .DurMS.Valid}}{{fmtDuration .DurMS.Int64}}{{else}}–{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p class="text-soft"><i class="bi bi-inbox me-1"></i>No moves recorded for this game.</p>
+      {{end}}
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const GID   = "{{.ID}}";
+  const moves = {{.MovesJS}};
+  const SIZE  = 8;
+  const CELL  = 38;
+  const PAD   = 30;
+  const COLS  = ['A','B','C','D','E','F','G','H'];
+
+  // ── Init SVG board ──────────────────────────────────────────────────────────
+  const W = PAD + SIZE * CELL;
+  const H = PAD + SIZE * CELL;
+  const draw = SVG().addTo('#board-' + GID).size(W, H);
+
+  COLS.forEach(function (c, i) {
+    draw.text(c).attr({
+      x: PAD + i * CELL + CELL / 2, y: PAD / 2,
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': '10', 'font-family': 'monospace',
+      fill: 'rgba(230,231,238,.3)'
+    });
+  });
+  for (let i = 0; i < SIZE; i++) {
+    draw.text(String(i + 1)).attr({
+      x: PAD / 2, y: PAD + i * CELL + CELL / 2,
+      'text-anchor': 'middle', 'dominant-baseline': 'central',
+      'font-size': '10', 'font-family': 'monospace',
+      fill: 'rgba(230,231,238,.3)'
+    });
+  }
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      draw.rect(CELL, CELL)
+        .move(PAD + x * CELL, PAD + y * CELL)
+        .fill('rgba(255,255,255,.025)')
+        .stroke({ color: 'rgba(255,255,255,.07)', width: 1 });
+    }
+  }
+
+  // ── Stone gradients (defined once) ─────────────────────────────────────────
+  // Black stone plays first (PlayerA), White plays second (PlayerB)
+  const blackGrad = draw.gradient('radial', function (add) {
+    add.stop(0, '#4a4a4a');
+    add.stop(1, '#080808');
+  }).attr({ cx: '36%', cy: '30%', r: '68%', fx: '32%', fy: '26%' });
+
+  const whiteGrad = draw.gradient('radial', function (add) {
+    add.stop(0, '#ffffff');
+    add.stop(1, '#c0c0c0');
+  }).attr({ cx: '36%', cy: '30%', r: '68%', fx: '32%', fy: '26%' });
+
+  const pieces = draw.group();
+
+  // ── Board renderer ──────────────────────────────────────────────────────────
+  function render(upTo) {
+    pieces.clear();
+
+    const board = Array.from({ length: SIZE }, () => Array(SIZE).fill(''));
+    for (let i = 0; i < upTo && i < moves.length; i++) {
+      const m = moves[i];
+      if (m.x >= 1 && m.x <= SIZE && m.y >= 1 && m.y <= SIZE) {
+        board[m.y - 1][m.x - 1] = m.mark;
+      }
+    }
+    const last = upTo > 0 && upTo <= moves.length ? moves[upTo - 1] : null;
+
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const mark = board[y][x];
+        if (!mark) continue;
+
+        const isX    = mark === 'B';
+        const isLast = last && last.x === x + 1 && last.y === y + 1;
+        const cx     = PAD + x * CELL + CELL / 2;
+        const cy     = PAD + y * CELL + CELL / 2;
+        const r      = (CELL - 8) / 2;
+
+        const g = pieces.group();
+
+        // Stone with radial gradient
+        g.circle(r * 2).center(cx, cy)
+          .fill(isX ? blackGrad : whiteGrad)
+          .stroke({ color: isX ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.45)', width: 1 });
+
+        // Last-move red dot at center
+        if (isLast) {
+          g.circle(6).center(cx, cy).fill('#e53935');
+        }
+
+        if (isLast) {
+          g.attr('opacity', 0);
+          g.animate(200, 0, 'now').attr('opacity', 1);
+        }
+      }
+    }
+
+    document.getElementById('step-label-' + GID).textContent = upTo + ' / ' + moves.length;
+
+    document.querySelectorAll('[id^="mrow-' + GID + '-"]').forEach(function (r) {
+      r.style.background = '';
+    });
+    if (upTo > 0) {
+      const row = document.getElementById('mrow-' + GID + '-' + upTo);
+      if (row) {
+        row.style.background = 'rgba(99,102,241,.18)';
+        row.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }
+
+  // ── Controls ────────────────────────────────────────────────────────────────
+  let step    = 0;
+  let playing = false;
+  let timer   = null;
+
+  window['stepGame']   = window['stepGame']   || function (gid, d) { window['_stepGame_'   + gid](d); };
+  window['togglePlay'] = window['togglePlay'] || function (gid)    { window['_togglePlay_' + gid](); };
+
+  window['_stepGame_' + GID] = function (delta) {
+    if (delta === 0)     { step = 0; }
+    else if (delta === 99999) { step = moves.length; }
+    else { step = Math.max(0, Math.min(moves.length, step + delta)); }
+    render(step);
+  };
+
+  window['_togglePlay_' + GID] = function () {
+    playing = !playing;
+    const btn = document.getElementById('play-btn-' + GID);
+    if (playing) {
+      btn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+      if (step >= moves.length) step = 0;
+      timer = setInterval(function () {
+        if (step >= moves.length) {
+          playing = false;
+          btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+          clearInterval(timer);
+          return;
+        }
+        step++;
+        render(step);
+      }, 700);
+    } else {
+      clearInterval(timer);
+      btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+    }
+  };
+
+  const card = document.querySelector('[data-game-id="' + GID + '"]');
+  card.setAttribute('tabindex', '0');
+  card.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window['_stepGame_' + GID](1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); window['_stepGame_' + GID](-1); }
+    if (e.key === 'Home')       { e.preventDefault(); window['_stepGame_' + GID](0); }
+    if (e.key === 'End')        { e.preventDefault(); window['_stepGame_' + GID](99999); }
+  });
+
+  render(0);
+})();
+</script>
+{{end}}

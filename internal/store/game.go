@@ -50,6 +50,12 @@ func (s *Store) FinishGame(id int64, result string, durationMS, moveCount int64)
 	return err
 }
 
+func (s *Store) GameByID(id int64) (Game, error) {
+	var game Game
+	err := s.DB.Get(&game, `SELECT * FROM games WHERE id = ?`, id)
+	return game, err
+}
+
 func (s *Store) ListGames(matchID int64) ([]Game, error) {
 	var games []Game
 	err := s.DB.Select(&games, `SELECT * FROM games WHERE match_id = ? ORDER BY id`, matchID)

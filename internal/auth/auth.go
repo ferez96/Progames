@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"database/sql"
@@ -24,6 +23,17 @@ const SessionCookieName = "progames_session"
 type contextKey string
 
 const userContextKey contextKey = "user"
+
+// User and Session are the minimal auth-layer identity types.
+// They carry only what downstream layers need — no password hashes or db tags.
+type User struct {
+	ID   int64
+	Name string
+}
+
+type Session struct {
+	CSRFToken string
+}
 
 type Service struct {
 	store       *store.Store
@@ -60,69 +70,59 @@ func (s *Service) SignUp(name, email, password string) (int64, error) {
 	return s.store.CreateUser(name, email, hash, salt)
 }
 
-func (s *Service) SignIn(email, password string) (store.User, string, string, error) {
+func (s *Service) SignIn(email, password string) (User, string, string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if s.isLocked(email) {
 		_, _ = verifyPassword(password, dummyHash, dummySalt)
-		return store.User{}, "", "", errors.New("invalid email or password")
+		return User{}, "", "", errors.New("invalid email or password")
 	}
 	user, err := s.store.UserByEmail(email)
 	if err != nil {
 		_, _ = verifyPassword(password, dummyHash, dummySalt)
 		s.recordFailure(email)
-		return store.User{}, "", "", errors.New("invalid email or password")
+		return User{}, "", "", errors.New("invalid email or password")
 	}
 	ok, err := verifyPassword(password, user.PasswordHash, user.PasswordSalt)
 	if err != nil || !ok {
 		s.recordFailure(email)
-		return store.User{}, "", "", errors.New("invalid email or password")
+		return User{}, "", "", errors.New("invalid email or password")
 	}
 	s.clearFailures(email)
 	sessionID := uuid.NewString()
 	csrf := uuid.NewString()
 	if err := s.store.CreateSession(sessionID, user.ID, csrf, time.Now().UTC().Add(s.sessionTTL)); err != nil {
-		return store.User{}, "", "", err
+		return User{}, "", "", err
 	}
-	return user, sessionID, csrf, nil
+	return User{ID: user.ID, Name: user.Name}, sessionID, csrf, nil
 }
 
 func (s *Service) SignOut(sessionID string) error {
 	return s.store.DeleteSession(sessionID)
 }
 
-func (s *Service) UserFromRequest(r *http.Request) (store.User, store.Session, error) {
+func (s *Service) UserFromRequest(r *http.Request) (User, Session, error) {
 	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
-		return store.User{}, store.Session{}, err
+		return User{}, Session{}, err
 	}
 	session, err := s.store.SessionByID(cookie.Value)
 	if err != nil {
-		return store.User{}, store.Session{}, err
+		return User{}, Session{}, err
 	}
 	user, err := s.store.UserByID(session.UserID)
-	return user, session, err
+	if err != nil {
+		return User{}, Session{}, err
+	}
+	return User{ID: user.ID, Name: user.Name}, Session{CSRFToken: session.CSRFToken}, nil
 }
 
-func (s *Service) Require(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, session, err := s.UserFromRequest(r)
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		ctx := context.WithValue(r.Context(), userContextKey, user)
-		ctx = context.WithValue(ctx, contextKey("session"), session)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func CurrentUser(r *http.Request) (store.User, bool) {
-	user, ok := r.Context().Value(userContextKey).(store.User)
+func CurrentUser(r *http.Request) (User, bool) {
+	user, ok := r.Context().Value(userContextKey).(User)
 	return user, ok
 }
 
-func CurrentSession(r *http.Request) (store.Session, bool) {
-	session, ok := r.Context().Value(contextKey("session")).(store.Session)
+func CurrentSession(r *http.Request) (Session, bool) {
+	session, ok := r.Context().Value(contextKey("session")).(Session)
 	return session, ok
 }
 

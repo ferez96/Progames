@@ -1,0 +1,44 @@
+{{define "games"}}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <p class="eyebrow mb-1">Match #{{.MatchID}}</p>
+    <h1 class="h-display display-6 mb-0">Games</h1>
+  </div>
+  <a class="btn btn-outline-light btn-sm" href="/matches/{{.MatchID}}"
+     hx-get="/matches/{{.MatchID}}" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-arrow-left me-1"></i>Back to result
+  </a>
+</div>
+
+<div class="d-flex gap-4" style="align-items: flex-start;">
+
+  {{/* ── Sidebar: game list ── */}}
+  <div style="width:200px;flex-shrink:0;">
+    <p class="eyebrow mb-2">Select game</p>
+    <div class="d-flex flex-column gap-2">
+      {{range $i, $g := .Games}}
+      <button class="btn btn-outline-light btn-sm text-start w-100{{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}} active{{end}}"
+              hx-get="/matches/{{$.MatchID}}/games/{{$g.ID}}/replay"
+              hx-target="#replay-center"
+              hx-swap="innerHTML">
+        <div class="fw-semibold">Game {{inc $i}}</div>
+        <div class="small text-soft mt-1">
+          <span class="badge {{$g.ResultBadgeClass}}">{{$g.ResultLabel}}</span>
+          <span class="ms-1">{{$g.MoveCount}} moves</span>
+        </div>
+      </button>
+      {{end}}
+    </div>
+  </div>
+
+  {{/* ── Center: active replay ── */}}
+  <div id="replay-center" class="flex-grow-1">
+    {{if .InitialGame}}
+      {{template "game_replay" .InitialGame}}
+    {{else}}
+      <p class="text-soft">No games recorded for this match.</p>
+    {{end}}
+  </div>
+
+</div>
+{{end}}

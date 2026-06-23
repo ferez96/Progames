@@ -15,19 +15,19 @@
 <div class="outcome-hero outcome-win">
   <div class="outcome-icon">🏆</div>
   <div class="outcome-title">You won!</div>
-  <div class="outcome-sub">{{.AgentA.Name}} beat {{.AgentB.Name}}{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+  <div class="outcome-sub">{{.AgentA.Name}} beat {{.AgentB.Name}}{{if .Match.DurationMS}} · {{fmtDuration .Match.DurationMS}}{{end}}</div>
 </div>
 {{else if eq .Outcome "loss"}}
 <div class="outcome-hero outcome-loss">
   <div class="outcome-icon">💪</div>
   <div class="outcome-title">Good fight</div>
-  <div class="outcome-sub">{{.AgentB.Name}} won this one — tweak your strategy and try again{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+  <div class="outcome-sub">{{.AgentB.Name}} won this one — tweak your strategy and try again{{if .Match.DurationMS}} · {{fmtDuration .Match.DurationMS}}{{end}}</div>
 </div>
 {{else if eq .Outcome "draw"}}
 <div class="outcome-hero outcome-draw">
   <div class="outcome-icon">🤝</div>
   <div class="outcome-title">It's a draw</div>
-  <div class="outcome-sub">Neither side could crack it{{if .Match.DurationMS.Valid}} · {{fmtDuration .Match.DurationMS.Int64}}{{end}}</div>
+  <div class="outcome-sub">Neither side could crack it{{if .Match.DurationMS}} · {{fmtDuration .Match.DurationMS}}{{end}}</div>
 </div>
 {{else if eq .Outcome "failed"}}
 <div class="outcome-hero outcome-failed">
@@ -48,13 +48,11 @@
   <div class="glass-card px-4 py-3" style="min-width:160px;">
     <p class="eyebrow mb-1">Your bot</p>
     <div class="fw-semibold">{{.AgentA.Name}}</div>
-    <span class="badge mt-1" style="background:rgba(99,102,241,.2);color:#a5b4fc;font-size:.7rem;">X</span>
   </div>
   <div class="text-soft fw-bold" style="font-size:1.1rem;">vs</div>
   <div class="glass-card px-4 py-3" style="min-width:160px;">
     <p class="eyebrow mb-1">Opponent</p>
     <div class="fw-semibold">{{.AgentB.Name}}</div>
-    <span class="badge mt-1" style="background:rgba(236,72,153,.18);color:#f9a8d4;font-size:.7rem;">O</span>
   </div>
 </div>
 
@@ -64,13 +62,15 @@
      hx-get="/matches/{{.Match.ID}}/logs" hx-target="#app" hx-push-url="true">
     <i class="bi bi-terminal me-1"></i>Logs
   </a>
-  <a class="btn btn-primary btn-sm" href="/matches/{{.Match.ID}}/replay"
-     hx-get="/matches/{{.Match.ID}}/replay" hx-target="#app" hx-push-url="true">
-    <i class="bi bi-play-fill me-1"></i>Replay
+  {{if .Games}}
+  <a class="btn btn-primary btn-sm" href="/matches/{{.Match.ID}}/games"
+     hx-get="/matches/{{.Match.ID}}/games" hx-target="#app" hx-push-url="true">
+    <i class="bi bi-play-fill me-1"></i>Watch games
   </a>
+  {{end}}
 </div>
 
-{{/* ── Games ── */}}
+{{/* ── Games summary ── */}}
 {{if .Games}}
 <div class="glass-card p-4">
   <h2 class="h6 eyebrow mb-3">Games</h2>
@@ -89,19 +89,9 @@
         {{range $i, $g := .Games}}
         <tr>
           <td class="ps-2 text-soft">{{inc $i}}</td>
-          <td class="text-soft small">
-            {{if eq $i 0}}X plays first{{else}}O plays first{{end}}
-          </td>
+          <td class="text-soft small">{{$g.BlackPlayer}}</td>
           <td>
-            {{if eq $g.Result "player_a_win"}}
-              <span class="badge badge-xwins">X wins</span>
-            {{else if eq $g.Result "player_b_win"}}
-              <span class="badge badge-owins">O wins</span>
-            {{else if eq $g.Result "draw"}}
-              <span class="badge badge-draw">Draw</span>
-            {{else}}
-              <span class="badge badge-failed">{{fmtGameResult $g.Result}}</span>
-            {{end}}
+            <span class="badge {{$g.ResultBadgeClass}}">{{$g.ResultLabel}}</span>
           </td>
           <td class="text-soft">{{$g.MoveCount}}</td>
           <td class="text-soft">{{fmtDuration $g.DurationMS}}</td>
