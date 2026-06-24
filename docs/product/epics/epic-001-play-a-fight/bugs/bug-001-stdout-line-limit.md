@@ -1,5 +1,9 @@
 # BUG-001: MaxStdoutLineBytes defaults to 64 bytes instead of 64 KiB
 
+## Status
+
+Closed — fixed in `internal/config/config.go`.
+
 ## Severity
 
 High — affects all bot matches in production.

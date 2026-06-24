@@ -30,7 +30,7 @@ func Load() Config {
 		ArtifactDir:        envString("PROGAMES_ARTIFACTS", "./artifacts"),
 		PerMoveTimeout:     envDuration("PROGAMES_PER_MOVE_TIMEOUT", 5*time.Second),
 		MaxSourceBytes:     int64(envInt("PROGAMES_MAX_SOURCE_BYTES", 256*1024)),
-		MaxStdoutLineBytes: envInt("PROGAMES_MAX_STDOUT_LINE_BYTES", 64),
+		MaxStdoutLineBytes: envInt("PROGAMES_MAX_STDOUT_LINE_BYTES", 64*1024), // 64 KiB per §14.4
 		MaxLogBytes:        envInt("PROGAMES_MAX_LOG_BYTES", 1024*1024),
 		QueueCap:           envInt("PROGAMES_QUEUE_CAP", 4),
 		BotMemoryBytes:     int64(envInt("PROGAMES_BOT_MEMORY_BYTES", 64*1024*1024)),

@@ -29,7 +29,7 @@ go run ./cmd/progames
 sudo docker compose up --build
 ```
 
-Docker requires `sudo` on this machine. The `artifacts/` directory contains user-submitted bot sources (some intentionally invalid) — never use bare `./...` with `go vet`, `gofmt`, or `govulncheck`. The Makefile's `PACKAGES` variable (`./cmd/... ./internal/... ./pkg/...`) is the correct scope for all tooling.
+Docker requires `sudo` on this machine. The `artifacts/` directory contains user-submitted bot sources (some intentionally invalid) — never use bare `./...` with `go vet`, `gofmt`, or `govulncheck`. The Makefile's `PACKAGES` variable (`./cmd/... ./internal/... ./pkg/...`) is the correct scope for all tooling. Never run bare `go build ./cmd/progames/` — it drops a binary at the project root; use `make build` (outputs to `bin/progames`).
 
 ## Architecture
 
