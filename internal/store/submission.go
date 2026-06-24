@@ -50,4 +50,3 @@ func (s *Store) SubmissionByID(id int64) (Submission, error) {
 	err := s.DB.Get(&sub, `SELECT * FROM submissions WHERE id = ?`, id)
 	return sub, err
 }
-

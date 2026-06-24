@@ -13,11 +13,11 @@ import (
 
 	"progames/internal/artifact"
 	"progames/internal/auth"
-	"progames/internal/sandbox"
 	"progames/internal/config"
 	"progames/internal/events"
 	"progames/internal/matchexec"
 	"progames/internal/obs"
+	"progames/internal/sandbox"
 	"progames/internal/service"
 	"progames/internal/store"
 	"progames/internal/submission"

@@ -11,7 +11,6 @@ import (
 	"progames/internal/testhelper"
 )
 
-
 func TestWriteRead(t *testing.T) {
 	t.Parallel()
 	repo := testhelper.NewArtifactRepo(t)
