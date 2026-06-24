@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Commands and critical warnings for working in this repository.
+For implementation workflow, layer rules, and status enums see [`docs/AGENTS.md`](docs/AGENTS.md).
 
 ## Commands
 
@@ -32,29 +33,9 @@ Docker requires `sudo` on this machine. The `artifacts/` directory contains user
 
 ## Architecture
 
-The app is a Go HTTP server (chi) serving server-rendered HTML (Go templates + HTMX). Bots run inside Docker containers during match execution; a process-based runner exists as a fallback when Docker is unavailable.
+Go HTTP server (chi) + server-rendered HTML (Go templates + HTMX). Bots run in Docker containers; process-based runner is the fallback.
 
-### Request flow
-
-```
-HTTP → web.Frontend → service layer → store (SQLite/sqlx)
-                    ↘ submission.Service (compile bot via Docker)
-                    ↘ matchexec.Queue (async match execution)
-```
-
-### Key packages
-
-| Package | Role |
-|---|---|
-| `internal/web` | HTTP handlers, template rendering, BFF DTOs |
-| `internal/service` | Use-case layer; `PracticeService`, `MatchService`, `GameService` |
-| `internal/submission` | Compiles user Go source inside a `golang:1.26` container; writes binary to `artifacts/` |
-| `internal/matchexec` | `Processor` runs a match; `Queue` wraps it async with backpressure |
-| `internal/runner` | `ContainerRunner` (Docker) and `ProcessRunner` (local binary) both implement `AgentRunner` |
-| `internal/store` | SQLite via sqlx; schema applied at startup (`schemaStatements`) |
-| `internal/auth` | Session + CSRF; cookie-based |
-| `internal/events` | Append-only event log per match; rendered into `execution_logs` |
-| `pkg/engine/caro` | Pure game logic (Gomoku on 8×8); no I/O |
+See [`docs/engineering/architecture/system-overview.md`](docs/engineering/architecture/system-overview.md) for the full layer map, package reference, and extension guides.
 
 ### Bot lifecycle
 
@@ -62,10 +43,6 @@ HTTP → web.Frontend → service layer → store (SQLite/sqlx)
 2. On match start, `matchexec.Processor.startRunners` wraps each binary in a scratch Docker image (`progames/bot:<submission_id>`) via `buildImage`, then creates a `ContainerRunner`
 3. Each game turn: the runner writes board state to the container's stdin, reads one `x,y` line from stdout, bounded by `PerMoveTimeout`
 4. Match structure: best-of-6 attempts of 2-game pairs; tie-breaking by fastest average move time
-
-### BFF pattern
-
-`internal/web/bff_*.go` files contain page-specific DTOs and conversion functions from service responses. Handlers in `web/practice.go`, `web/match.go` etc. call the BFF converters before passing data to templates.
 
 ### Docker config
 
