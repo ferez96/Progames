@@ -1,32 +1,29 @@
 package submission
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/moby/moby/api/pkg/stdcopy"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
+	"progames/internal/artifact"
 	"progames/internal/config"
 	"progames/internal/obs"
 	"progames/internal/store"
 )
 
+type Builder interface {
+	Build(ctx context.Context, sourceID artifact.ID) (artifactID artifact.ID, output string, err error)
+}
+
 type Service struct {
-	store     *store.Store
-	cfg       config.Config
-	dockerCli *client.Client
+	store   *store.Store
+	cfg     config.Config
+	builder Builder
+	files   artifact.Repository
 }
 
 type Result struct {
@@ -38,209 +35,121 @@ type Result struct {
 	Output       string
 }
 
-func New(st *store.Store, cfg config.Config, dockerCli *client.Client) *Service {
-	return &Service{store: st, cfg: cfg, dockerCli: dockerCli}
+func New(st *store.Store, cfg config.Config, builder Builder, files artifact.Repository) *Service {
+	return &Service{store: st, cfg: cfg, builder: builder, files: files}
 }
 
 func (s *Service) Submit(ctx context.Context, userID int64, code string) (Result, error) {
+	if s.builder == nil {
+		return Result{}, fmt.Errorf("no builder configured")
+	}
 	code = strings.TrimSpace(code)
+	if err := s.validate(code); err != nil {
+		return Result{}, err
+	}
+	sourceID, submissionID, err := s.intake(ctx, userID, code)
+	if err != nil {
+		return Result{}, err
+	}
+	return s.compile(ctx, userID, submissionID, sourceID)
+}
+
+func (s *Service) validate(code string) error {
 	if code == "" {
-		return Result{}, errors.New("source code is required")
+		return errors.New("source code is required")
 	}
 	if int64(len(code)) > s.cfg.MaxSourceBytes {
-		return Result{}, fmt.Errorf("source code exceeds %d bytes", s.cfg.MaxSourceBytes)
+		return fmt.Errorf("source code exceeds %d bytes", s.cfg.MaxSourceBytes)
 	}
 	if !strings.Contains(code, "package main") || !strings.Contains(code, "func main()") {
-		return Result{}, errors.New("source must be a single Go file with package main and func main()")
+		return errors.New("source must be a single Go file with package main and func main()")
 	}
+	return nil
+}
 
-	sourceGUID, err := uuid.NewV7()
+// intake stores the source file and creates the submission record.
+// On source_code DB failure the file is compensated; submission record failure
+// leaves the source orphaned until the startup scan reconciles it.
+func (s *Service) intake(ctx context.Context, userID int64, code string) (artifact.ID, int64, error) {
+	sourceID, err := s.files.Write(ctx, strings.NewReader(code))
 	if err != nil {
-		return Result{}, fmt.Errorf("unable to create source code ID")
+		return "", 0, err
 	}
-	sourceID := sourceGUID.String()
-	sourcePath := s.store.SourcePath(sourceID)
-	if err := os.MkdirAll(filepath.Dir(sourcePath), 0o755); err != nil {
-		return Result{}, err
+	if err := s.store.CreateSourceCode(string(sourceID), string(sourceID), int64(len(code))); err != nil {
+		if derr := s.files.Delete(ctx, sourceID); derr != nil {
+			zap.L().Error("submission.source_delete_failed", zap.String("source_id", string(sourceID)), zap.Error(derr))
+		}
+		return "", 0, err
 	}
-	if err := os.WriteFile(sourcePath, []byte(code), 0o644); err != nil {
-		return Result{}, err
-	}
-	if err := s.store.CreateSourceCode(sourceID, sourcePath, int64(len(code))); err != nil {
-		return Result{}, err
-	}
-	submissionID, err := s.store.CreateSubmission(userID, sourceID)
+	submissionID, err := s.store.CreateSubmission(userID, string(sourceID))
 	if err != nil {
-		return Result{}, err
+		return "", 0, err
 	}
+	zap.L().Info("submission.created",
+		zap.Int64("user_id", userID),
+		zap.Int64("submission_id", submissionID),
+		zap.String("source_id", string(sourceID)),
+	)
+	return sourceID, submissionID, nil
+}
 
-	binaryPath := s.store.BinaryPath(submissionID)
-	if err := os.MkdirAll(filepath.Dir(binaryPath), 0o755); err != nil {
-		return Result{}, err
-	}
-	buildStart := time.Now()
-	output, buildErr := s.build(ctx, sourcePath, binaryPath)
-	buildMS := time.Since(buildStart).Milliseconds()
+func (s *Service) compile(ctx context.Context, userID, submissionID int64, sourceID artifact.ID) (Result, error) {
+	zap.L().Info("submission.build_started",
+		zap.Int64("submission_id", submissionID),
+		zap.String("source_id", string(sourceID)),
+	)
+
+	start := time.Now()
+	artifactID, output, buildErr := s.builder.Build(ctx, sourceID)
+	durMS := time.Since(start).Milliseconds()
+
 	if buildErr != nil {
-		msg := "build failed"
-		_ = s.store.UpdateSubmissionBuild(submissionID, "invalid", msg, output, "")
+		if err := s.store.UpdateSubmissionBuild(submissionID, "invalid", "build failed", output, ""); err != nil {
+			zap.L().Error("submission.status_update_failed", zap.Int64("submission_id", submissionID), zap.Error(err))
+		}
 		obs.SubmissionsInvalid.Add(1)
-		zap.L().Info("submission.invalid", zap.Int64("submission_id", submissionID), zap.Int64("dur_ms", buildMS))
-		return Result{SourceID: sourceID, SubmissionID: submissionID, Status: "invalid", Message: msg, Output: output}, nil
+		zap.L().Info("submission.build_failed",
+			zap.Int64("submission_id", submissionID),
+			zap.Int64("dur_ms", durMS),
+			zap.Error(buildErr),
+		)
+		return Result{
+			SourceID:     string(sourceID),
+			SubmissionID: submissionID,
+			Status:       "invalid",
+			Message:      "build failed",
+			Output:       output,
+		}, nil
 	}
-	if err := s.store.UpdateSubmissionBuild(submissionID, "compiled", "build succeeded", output, binaryPath); err != nil {
+
+	if err := s.store.UpdateSubmissionBuild(submissionID, "compiled", "build succeeded", output, string(artifactID)); err != nil {
+		if derr := s.files.Delete(ctx, artifactID); derr != nil {
+			zap.L().Error("submission.artifact_delete_failed", zap.String("artifact_id", string(artifactID)), zap.Error(derr))
+		}
 		return Result{}, err
 	}
 	obs.SubmissionsCompiled.Add(1)
-	zap.L().Info("submission.compiled", zap.Int64("submission_id", submissionID), zap.Int64("dur_ms", buildMS))
+	zap.L().Info("submission.build_succeeded",
+		zap.Int64("submission_id", submissionID),
+		zap.Int64("dur_ms", durMS),
+		zap.String("artifact_id", string(artifactID)),
+	)
 
 	agentID, err := s.store.CreateAgent(userID, submissionID, fmt.Sprintf("Submission #%d", submissionID))
 	if err != nil {
 		return Result{}, err
 	}
+	zap.L().Info("submission.agent_created",
+		zap.Int64("submission_id", submissionID),
+		zap.Int64("agent_id", agentID),
+	)
+
 	return Result{
-		SourceID:     sourceID,
+		SourceID:     string(sourceID),
 		SubmissionID: submissionID,
 		AgentID:      agentID,
 		Status:       "compiled",
 		Message:      "build succeeded",
 		Output:       output,
 	}, nil
-}
-
-func (s *Service) build(ctx context.Context, sourcePath, binaryPath string) (string, error) {
-	if s.dockerCli == nil {
-		return "", fmt.Errorf("no Docker client: cannot compile without Go toolchain")
-	}
-	return buildWithDocker(ctx, s.dockerCli, s.cfg.GoBuilderImage, sourcePath, binaryPath)
-}
-
-// goVersionFromImage extracts the Go language version from an image tag like
-// "golang:1.26" or "golang:1.26-alpine", defaulting to "1.21" if unparseable.
-func goVersionFromImage(image string) string {
-	tag := image
-	if i := strings.LastIndex(image, ":"); i >= 0 {
-		tag = image[i+1:]
-	}
-	if i := strings.Index(tag, "-"); i >= 0 {
-		tag = tag[:i]
-	}
-	if tag == "" || tag == "latest" {
-		return "1.21"
-	}
-	return tag
-}
-
-func buildWithDocker(ctx context.Context, cli *client.Client, builderImage, sourcePath, binaryPath string) (string, error) {
-	src, err := os.ReadFile(sourcePath)
-	if err != nil {
-		return "", fmt.Errorf("read source: %w", err)
-	}
-
-	// Pack source + go.mod into a tar for CopyToContainer. The go directive
-	// matches the builder image version so language features up to that version
-	// are available to user code.
-	gomod := []byte("module bot\n\ngo " + goVersionFromImage(builderImage) + "\n")
-	var srcTar bytes.Buffer
-	tw := tar.NewWriter(&srcTar)
-	_ = tw.WriteHeader(&tar.Header{Name: "go.mod", Size: int64(len(gomod)), Mode: 0o644})
-	_, _ = tw.Write(gomod)
-	_ = tw.WriteHeader(&tar.Header{Name: "main.go", Size: int64(len(src)), Mode: 0o644})
-	_, _ = tw.Write(src)
-	_ = tw.Close()
-
-	resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
-		Image: builderImage,
-		Config: &container.Config{
-			// Use full path to avoid PATH lookup issues (Env below does not inherit image PATH).
-			Cmd:        []string{"/usr/local/go/bin/go", "build", "-o", "/tmp/bot", "."},
-			WorkingDir: "/src",
-			Env: []string{
-				"CGO_ENABLED=0",
-				"GOOS=linux",
-				"GOPATH=/tmp/gopath",
-				"GOCACHE=/tmp/gocache",
-				"HOME=/root",
-			},
-		},
-		HostConfig: &container.HostConfig{
-			NetworkMode: "none",
-		},
-	})
-	if err != nil {
-		msg := fmt.Sprintf("create build container: %v", err)
-		return msg, fmt.Errorf("%s", msg)
-	}
-	id := resp.ID
-	defer func() {
-		_, _ = cli.ContainerRemove(ctx, id, client.ContainerRemoveOptions{Force: true})
-	}()
-
-	if _, err := cli.CopyToContainer(ctx, id, client.CopyToContainerOptions{
-		DestinationPath: "/src",
-		Content:         bytes.NewReader(srcTar.Bytes()),
-	}); err != nil {
-		msg := fmt.Sprintf("copy source to container: %v", err)
-		return msg, fmt.Errorf("%s", msg)
-	}
-
-	if _, err := cli.ContainerStart(ctx, id, client.ContainerStartOptions{}); err != nil {
-		msg := fmt.Sprintf("start build container: %v", err)
-		return msg, fmt.Errorf("%s", msg)
-	}
-
-	waitResult := cli.ContainerWait(ctx, id, client.ContainerWaitOptions{
-		Condition: container.WaitConditionNotRunning,
-	})
-	var exitCode int64
-	select {
-	case err := <-waitResult.Error:
-		if err != nil {
-			return "", fmt.Errorf("wait for build container: %w", err)
-		}
-	case res := <-waitResult.Result:
-		exitCode = res.StatusCode
-	}
-
-	logStream, err := cli.ContainerLogs(ctx, id, client.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-	})
-	if err != nil {
-		return "", fmt.Errorf("get build logs: %w", err)
-	}
-	defer func() { _ = logStream.Close() }()
-	var logBuf bytes.Buffer
-	_, _ = stdcopy.StdCopy(&logBuf, &logBuf, logStream)
-	output := logBuf.String()
-
-	if exitCode != 0 {
-		return output, fmt.Errorf("compiler exited with code %d", exitCode)
-	}
-
-	binResult, err := cli.CopyFromContainer(ctx, id, client.CopyFromContainerOptions{
-		SourcePath: "/tmp/bot",
-	})
-	if err != nil {
-		return output, fmt.Errorf("copy binary from container: %w", err)
-	}
-	defer func() { _ = binResult.Content.Close() }()
-
-	tr := tar.NewReader(binResult.Content)
-	if _, err := tr.Next(); err != nil {
-		return output, fmt.Errorf("read binary tar entry: %w", err)
-	}
-	f, err := os.OpenFile(binaryPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
-	if err != nil {
-		return output, fmt.Errorf("open binary for writing: %w", err)
-	}
-	if _, err := io.Copy(f, tr); err != nil {
-		_ = f.Close()
-		return output, fmt.Errorf("write binary: %w", err)
-	}
-	if err := f.Close(); err != nil {
-		return output, fmt.Errorf("close binary: %w", err)
-	}
-
-	return output, nil
 }

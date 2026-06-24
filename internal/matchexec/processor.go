@@ -1,13 +1,9 @@
 package matchexec
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,10 +11,12 @@ import (
 	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
+	"progames/internal/artifact"
 	"progames/internal/config"
 	"progames/internal/events"
 	"progames/internal/obs"
 	"progames/internal/runner"
+	"progames/internal/sandbox"
 	"progames/internal/service"
 	"progames/internal/store"
 	"progames/pkg/engine/caro"
@@ -51,10 +49,11 @@ type Processor struct {
 	events    *events.Store
 	cfg       config.Config
 	dockerCli *client.Client
+	files     artifact.PathResolver
 }
 
-func NewProcessor(st matchStore, ev *events.Store, cfg config.Config, dockerCli *client.Client) *Processor {
-	return &Processor{store: st, events: ev, cfg: cfg, dockerCli: dockerCli}
+func NewProcessor(st matchStore, ev *events.Store, cfg config.Config, dockerCli *client.Client, files artifact.PathResolver) *Processor {
+	return &Processor{store: st, events: ev, cfg: cfg, dockerCli: dockerCli, files: files}
 }
 
 // Process runs a job synchronously: prepares the match in the DB then executes all games.
@@ -342,8 +341,12 @@ func (p *Processor) startRunners(agentA, agentB store.Agent) (map[int64]runner.A
 				return nil, nil, err
 			}
 			if p.dockerCli != nil {
+				if !sub.BinaryPath.Valid {
+					return nil, nil, fmt.Errorf("submission %d has no binary", sub.ID)
+				}
 				imageTag := fmt.Sprintf("%s:%d", p.cfg.DockerImagePrefix, sub.ID)
-				if err := buildImage(context.Background(), p.dockerCli, sub.BinaryPath.String, imageTag); err != nil {
+				binaryPath := p.files.ResolvePath(artifact.ID(sub.BinaryPath.String))
+				if err := sandbox.BuildRunnerImage(context.Background(), p.dockerCli, binaryPath, imageTag); err != nil {
 					return nil, nil, fmt.Errorf("build image for submission %d: %w", sub.ID, err)
 				}
 				imageTags = append(imageTags, imageTag)
@@ -352,7 +355,7 @@ func (p *Processor) startRunners(agentA, agentB store.Agent) (map[int64]runner.A
 				if !sub.BinaryPath.Valid {
 					return nil, nil, fmt.Errorf("submission %d has no binary", sub.ID)
 				}
-				r = runner.NewProcess(sub.BinaryPath.String, p.cfg.MaxStdoutLineBytes)
+				r = runner.NewProcess(p.files.ResolvePath(artifact.ID(sub.BinaryPath.String)), p.cfg.MaxStdoutLineBytes)
 			}
 		}
 		if err := r.Start(); err != nil {
@@ -395,31 +398,6 @@ func sumCount(values []int64) (int64, int64, bool) {
 		sum += v
 	}
 	return sum, int64(len(values)), true
-}
-
-func buildImage(ctx context.Context, cli *client.Client, binaryPath, imageTag string) error {
-	binary, err := os.ReadFile(binaryPath)
-	if err != nil {
-		return err
-	}
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	dockerfile := "FROM scratch\nCOPY bot /bot\nENTRYPOINT [\"/bot\"]\n"
-	_ = tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: int64(len(dockerfile)), Mode: 0o644})
-	_, _ = io.WriteString(tw, dockerfile)
-	_ = tw.WriteHeader(&tar.Header{Name: "bot", Size: int64(len(binary)), Mode: 0o755})
-	_, _ = tw.Write(binary)
-	_ = tw.Close()
-	resp, err := cli.ImageBuild(ctx, &buf, client.ImageBuildOptions{
-		Tags:   []string{imageTag},
-		Remove: true,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	_, err = io.Copy(io.Discard, resp.Body)
-	return err
 }
 
 func nullableInt(value sql.NullInt64) any {

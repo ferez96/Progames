@@ -3,8 +3,6 @@ package store
 import (
 	"database/sql"
 	"errors"
-	"os"
-	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -13,23 +11,16 @@ import (
 )
 
 type Store struct {
-	DB          *sqlx.DB
-	ArtifactDir string
+	DB *sqlx.DB
 }
 
 func Open(cfg config.Config) (*Store, error) {
-	if err := os.MkdirAll(filepath.Join(cfg.ArtifactDir, "sources"), 0o755); err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(filepath.Join(cfg.ArtifactDir, "bins"), 0o755); err != nil {
-		return nil, err
-	}
 	db, err := sqlx.Open("sqlite", cfg.DBPath)
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{DB: db, ArtifactDir: cfg.ArtifactDir}
+	s := &Store{DB: db}
 	if err := s.Init(); err != nil {
 		_ = db.Close()
 		return nil, err

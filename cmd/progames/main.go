@@ -11,11 +11,13 @@ import (
 	"github.com/moby/moby/client"
 	"go.uber.org/zap"
 
+	"progames/internal/artifact"
 	"progames/internal/auth"
 	"progames/internal/config"
 	"progames/internal/events"
 	"progames/internal/matchexec"
 	"progames/internal/obs"
+	"progames/internal/sandbox"
 	"progames/internal/service"
 	"progames/internal/store"
 	"progames/internal/submission"
@@ -49,10 +51,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	fileRepo := artifact.NewLocalRepository(cfg.ArtifactDir)
+	var builder submission.Builder
+	if dockerCli != nil {
+		builder = sandbox.NewCompiler(dockerCli, cfg.GoBuilderImage, fileRepo)
+	}
+
 	authSvc := auth.New(st, cfg)
 	eventStore := events.New(st)
-	submissionSvc := submission.New(st, cfg, dockerCli)
-	matchProcessor := matchexec.NewProcessor(st, eventStore, cfg, dockerCli)
+	submissionSvc := submission.New(st, cfg, builder, fileRepo)
+	matchProcessor := matchexec.NewProcessor(st, eventStore, cfg, dockerCli, fileRepo)
 	matchQueue := matchexec.NewQueue(ctx, matchProcessor, cfg.QueueCap)
 	practiceSvc := service.NewPractice(st, submissionSvc, matchQueue)
 	matchSvc := service.NewMatch(st)

@@ -2,34 +2,36 @@ package submission_test
 
 import (
 	"context"
-	"path/filepath"
+	"fmt"
 	"testing"
-	"time"
 
-	"github.com/moby/moby/client"
-
-	"progames/internal/config"
-	"progames/internal/store"
+	"progames/internal/artifact"
+	"progames/internal/sandbox"
 	"progames/internal/submission"
+	"progames/internal/testhelper"
 )
 
+// failBuilder satisfies submission.Builder but always returns a build error.
+// Used to exercise validation paths without requiring Docker.
+type failBuilder struct{}
+
+func (failBuilder) Build(_ context.Context, _ artifact.ID) (artifact.ID, string, error) {
+	return "", "", fmt.Errorf("stub: build not available")
+}
+
 func TestSubmitBuildsValidGoSource(t *testing.T) {
-	if testing.Short() {
-		t.Skip("requires Docker")
-	}
 	t.Parallel()
 
-	st := newStore(t)
-	t.Cleanup(func() {
-		if err := st.Close(); err != nil {
-			t.Errorf("close store: %v", err)
-		}
-	})
+	cfg := testhelper.TestConfig(t)
+	cli := testhelper.NewDockerClient(t)
+	st := testhelper.NewStore(t, cfg)
+
 	userID, err := st.CreateUser("User", "user@example.com", "hash", "salt")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	svc := submission.New(st, testConfig(t), newDockerClient(t))
+	repo := artifact.NewLocalRepository(cfg.ArtifactDir)
+	svc := submission.New(st, cfg, sandbox.NewCompiler(cli, cfg.GoBuilderImage, repo), repo)
 	result, err := svc.Submit(context.Background(), userID, "package main\nfunc main() {}\n")
 	if err != nil {
 		t.Fatalf("submit: %v", err)
@@ -45,57 +47,16 @@ func TestSubmitBuildsValidGoSource(t *testing.T) {
 func TestSubmitRejectsInvalidSource(t *testing.T) {
 	t.Parallel()
 
-	st := newStore(t)
-	t.Cleanup(func() {
-		if err := st.Close(); err != nil {
-			t.Errorf("close store: %v", err)
-		}
-	})
+	cfg := testhelper.TestConfig(t)
+	st := testhelper.NewStore(t, cfg)
 	userID, err := st.CreateUser("User", "invalid@example.com", "hash", "salt")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	svc := submission.New(st, testConfig(t), nil)
+	repo := artifact.NewLocalRepository(cfg.ArtifactDir)
+	svc := submission.New(st, cfg, failBuilder{}, repo)
 	result, err := svc.Submit(context.Background(), userID, "package main\n")
 	if err == nil {
 		t.Fatalf("expected validation error, got result=%+v", result)
-	}
-}
-
-func newDockerClient(t *testing.T) *client.Client {
-	t.Helper()
-	cli, err := client.New(client.FromEnv)
-	if err != nil {
-		t.Skipf("docker unavailable: %v", err)
-	}
-	if _, err := cli.Ping(context.Background(), client.PingOptions{}); err != nil {
-		_ = cli.Close()
-		t.Skipf("docker daemon unreachable: %v", err)
-	}
-	t.Cleanup(func() { _ = cli.Close() })
-	return cli
-}
-
-func newStore(t *testing.T) *store.Store {
-	t.Helper()
-	st, err := store.Open(testConfig(t))
-	if err != nil {
-		t.Fatalf("open store: %v", err)
-	}
-	return st
-}
-
-func testConfig(t *testing.T) config.Config {
-	t.Helper()
-	base := t.TempDir()
-	return config.Config{
-		DBPath:             filepath.Join(base, "progames.db"),
-		ArtifactDir:        filepath.Join(base, "artifacts"),
-		MaxSourceBytes:     256 * 1024,
-		PerMoveTimeout:     time.Second,
-		MaxStdoutLineBytes: 64 * 1024,
-		MaxLogBytes:        1024 * 1024,
-		SessionTTL:         time.Hour,
-		GoBuilderImage:     "golang:1.26",
 	}
 }
