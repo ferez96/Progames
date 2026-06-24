@@ -2,9 +2,6 @@ package store
 
 import (
 	"database/sql"
-	"fmt"
-	"path/filepath"
-	"runtime"
 	"time"
 )
 
@@ -54,16 +51,3 @@ func (s *Store) SubmissionByID(id int64) (Submission, error) {
 	return sub, err
 }
 
-func (s *Store) SourcePath(sourceID string) string {
-	base, _ := filepath.Abs(s.ArtifactDir)
-	return filepath.Join(base, "sources", sourceID, "main.go")
-}
-
-func (s *Store) BinaryPath(submissionID int64) string {
-	base, _ := filepath.Abs(s.ArtifactDir)
-	name := "bot"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	return filepath.Join(base, "bins", fmt.Sprintf("%d", submissionID), name)
-}

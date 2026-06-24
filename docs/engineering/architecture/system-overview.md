@@ -55,16 +55,25 @@ service
  └── submission
 
 submission
+ ├── artifact
  └── store
 
 matchexec
+ ├── artifact
  ├── events
+ ├── sandbox
  ├── service  (types/constants only; service does not import matchexec)
  ├── runner
  └── store
 
+sandbox
+ └── artifact
+
 events
  └── store
+
+artifact
+ └── (no internal dependencies)
 
 store
  └── (no internal dependencies)
@@ -84,8 +93,11 @@ store
 | `internal/obs` | Operational metrics and counters |
 | `internal/runner` | Bot process lifecycle: start, move I/O, timeout, teardown; built-in system agent |
 | `internal/service` | Domain services, domain types, and store converters |
-| `internal/store` | Persistence: SQL queries and file artifact access |
-| `internal/submission` | Code validation, compilation, and agent creation |
+| `internal/artifact` | Storage-agnostic file repository (`Repository`, `PathResolver`) and local filesystem implementation |
+| `internal/sandbox` | Docker isolation: compilation (`Compiler`) and runner image building (`BuildRunnerImage`) |
+| `internal/store` | Persistence: SQL queries |
+| `internal/submission` | Code validation, build orchestration, and agent creation |
+| `internal/testhelper` | Shared test helpers: `NewDockerClient`, `NewStore`, `NewArtifactRepo`, `TestConfig` |
 | `internal/web` | HTTP server, page handlers, BFF translation, and template rendering |
 | `pkg/engine/caro` | Caro game rules: board, move validation, win detection — pure library, no I/O |
 
@@ -130,7 +142,7 @@ Extension points from current implementation:
 
 - `matchexec.Queue` → replace with an event bus consumer subscribing to `match.created`; `Processor` stays the same
 - Match Executor publishes lifecycle events (`match.started`, `game.finished`, `match.finished`) back to the bus — Notification, Audit, and Analytics subscribe without touching the execution path
-- `store` local file access → swap in any persistent artifact storage (blob, object store, NFS, etc.)
+- `artifact.Repository` → swap `LocalRepository` for any remote backend (S3, Azure Blob, NFS) without touching `submission` or `matchexec`
 - `web.Frontend` → add API handlers alongside, reusing the same service layer
 
 ---
@@ -160,4 +172,4 @@ The HTTP server already separates page and API routing. Add API handlers alongsi
 
 ### Artifact storage
 
-Abstract file artifact access in `store` behind an interface. The backing store can be local disk, blob storage (Azure Blob, S3, etc.), or any persistent file storage — swap in the client without changing callers in `submission` or `matchexec`.
+`internal/artifact` provides `Repository` and `PathResolver` interfaces backed by `LocalRepository`. To swap in remote storage, implement `Repository` against the target backend (S3, Azure Blob, etc.) and wire it in `main.go`; `submission` and `matchexec` require no changes. Note: `PathResolver` (used by `matchexec` to locate binaries for execution) is only implementable with a local cache layer — remote backends must download to a local path before returning it.

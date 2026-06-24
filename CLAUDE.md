@@ -39,8 +39,8 @@ See [`docs/engineering/architecture/system-overview.md`](docs/engineering/archit
 
 ### Bot lifecycle
 
-1. User submits Go source → `submission.Service.Submit` compiles it inside a `golang:1.26` Docker container (CGO_ENABLED=0, GOOS=linux) → binary saved to `artifacts/binaries/<submission_id>`
-2. On match start, `matchexec.Processor.startRunners` wraps each binary in a scratch Docker image (`progames/bot:<submission_id>`) via `buildImage`, then creates a `ContainerRunner`
+1. User submits Go source → `submission.Service.Submit` compiles it inside a `golang:1.26` Docker container via `sandbox.Compiler` (CGO_ENABLED=0, GOOS=linux) → binary stored through `artifact.Repository` → `artifact.ID` saved to `submissions.binary_path`
+2. On match start, `matchexec.Processor.startRunners` resolves the binary path via `artifact.PathResolver`, wraps it in a scratch Docker image via `sandbox.BuildRunnerImage`, then creates a `ContainerRunner`
 3. Each game turn: the runner writes board state to the container's stdin, reads one `x,y` line from stdout, bounded by `PerMoveTimeout`
 4. Match structure: best-of-6 attempts of 2-game pairs; tie-breaking by fastest average move time
 
@@ -48,7 +48,7 @@ See [`docs/engineering/architecture/system-overview.md`](docs/engineering/archit
 
 - `GoBuilderImage` (default `golang:1.26`): image used to compile user bots
 - `DockerImagePrefix` (default `progames/bot`): prefix for per-submission runner images
-- Both must be set in `testConfig` when writing tests that invoke submission or matchexec
+- Both must be set in `testhelper.TestConfig` when writing tests that invoke submission or matchexec
 
 ### Tests with Docker
 
@@ -56,4 +56,4 @@ Tests in `internal/submission` and `internal/matchexec` require a Docker daemon.
 - `testing.Short()` is true (`go test -short`)
 - Docker daemon is unreachable (`client.Ping` fails)
 
-Use `newDockerClient(t)` helper (defined in each test file) — do not pass `nil` for the Docker client.
+Use `testhelper.NewDockerClient(t)` — do not pass `nil` for the Docker client.

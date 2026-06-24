@@ -1,4 +1,4 @@
-# BUG-002: Stale artifact cleanup not implemented (§16.4)
+# BUG-002: Stale artifact cleanup not implemented (§16.4) — CLOSED
 
 ## Severity
 
@@ -31,3 +31,7 @@ Exact mechanism is an engineering decision; this bug is closed when at least one
 
 - Failed builds do not leave untracked files on disk, **or** untracked files are recorded in a recoverable manifest.
 - The chosen mechanism is documented in engineering docs.
+
+## Resolution
+
+All artifacts are written through `artifact.LocalRepository` (`internal/artifact/`). In-process SAGA compensation (`repo.Delete`) cleans up on build failure and DB write failure. Engineering doc: `docs/engineering/artifact-cleanup.md`. Startup reconciliation scan is deferred — tracked as a follow-up story.
