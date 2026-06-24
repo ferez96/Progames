@@ -1,35 +1,15 @@
-# Window specific variables
-ifeq ($(OS),Windows_NT)
-	EXE := .exe
-else
-	EXE :=
-endif
-
-GO := go
-BIN := bin/progames$(EXE)
 GOLANGCI_LINT_VERSION := v2.12.2
-GOVULNCHECK_VERSION := latest
+PACKAGES := ./cmd/... ./internal/... ./pkg/...
 
-.PHONY: tidy fmt test lint vuln fix check build
-
-tidy:
-	${GO} mod tidy
-
-fmt: 
-	${GO} fmt ./...
+.PHONY: test check build
 
 test:
-	${GO} test $(shell ${GO} list ./... | grep -v '/artifacts/')
+	go test $(PACKAGES)
 
-lint:
-	${GO} run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} run ./cmd/... ./internal/... ./pkg/...
-
-vuln:
-	${GO} run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
-
-fix: fmt tidy
-
-check: test lint vuln
+check:
+	go vet $(PACKAGES)
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run $(PACKAGES)
+	go run golang.org/x/vuln/cmd/govulncheck@latest $(PACKAGES)
 
 build:
-	$(GO) build -o $(BIN) cmd/progames/
+	go build -o bin/progames ./cmd/progames/
