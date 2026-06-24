@@ -28,7 +28,7 @@ Not yet built: tournaments, versioned DB migrations, multi-language support.
 
 | Concern | Choice |
 |---|---|
-| Language | Go 1.25+ |
+| Language | Go 1.26+ |
 | HTTP router | [chi](https://github.com/go-chi/chi) |
 | Frontend interaction | [HTMX](https://htmx.org) |
 | Board rendering | [SVG.js v3](https://svgjs.dev) |
@@ -43,7 +43,7 @@ Not yet built: tournaments, versioned DB migrations, multi-language support.
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - Docker (optional; process runner used as fallback)
 
 ### With docker-compose

@@ -11,5 +11,6 @@
 ## Layout
 
 - `SPECS.md`: product behavior and contracts.
+- `ROADMAP.md`: milestone-level delivery state and sequencing.
 - `epics/`: delivery breakdown; must not conflict with `SPECS.md`.
 

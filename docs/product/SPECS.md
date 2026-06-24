@@ -129,6 +129,8 @@ If **neither agent has more game wins** (including 1–1 on wins, or 0–0 with 
 
 → Winner = agent with **lower average move time** across both games, where average is computed from persisted `Move.duration_ms` for that agent **only for turns where that player successfully submitted a line that the engine accepted as a legal move**. Turns that end in timeout, process crash, or illegal output do not add a duration sample for that player for tie-break purposes.
 
+If one agent has qualifying samples and the other does not, the agent **with** samples wins the tie-break (the agent with no accepted moves is considered slower by definition).
+
 If the averages are **equal**, or neither side has any qualifying samples:
 
 1. Run a **rematch** (same two agents, same two-game structure as §4.1).
