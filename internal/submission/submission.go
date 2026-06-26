@@ -12,6 +12,7 @@ import (
 	"progames/internal/artifact"
 	"progames/internal/config"
 	"progames/internal/obs"
+	"progames/internal/pkg/agentname"
 	"progames/internal/store"
 )
 
@@ -135,7 +136,7 @@ func (s *Service) compile(ctx context.Context, userID, submissionID int64, sourc
 		zap.String("artifact_id", string(artifactID)),
 	)
 
-	agentID, err := s.store.CreateAgent(userID, submissionID, fmt.Sprintf("Submission #%d", submissionID))
+	agentID, err := s.store.CreateAgent(userID, submissionID, agentname.Generate())
 	if err != nil {
 		return Result{}, err
 	}

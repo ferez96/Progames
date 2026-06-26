@@ -79,7 +79,8 @@
       <thead>
         <tr>
           <th class="ps-2">Game</th>
-          <th>First player</th>
+          <th>Black</th>
+          <th>White</th>
           <th>Result</th>
           <th>Moves</th>
           <th>Duration</th>
@@ -90,6 +91,7 @@
         <tr>
           <td class="ps-2 text-soft">{{inc $i}}</td>
           <td class="text-soft small">{{$g.BlackPlayer}}</td>
+          <td class="text-soft small">{{$g.WhitePlayer}}</td>
           <td>
             <span class="badge {{$g.ResultBadgeClass}}">{{$g.ResultLabel}}</span>
           </td>

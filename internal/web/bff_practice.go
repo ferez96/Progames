@@ -18,6 +18,7 @@ type practicePageData struct {
 
 type practiceMatchRow struct {
 	ID      int64
+	Agent   string
 	Status  string
 	Outcome string // "Win" | "Loss" | "Draw" | "Failed" | "–"
 	OppName string
@@ -27,13 +28,18 @@ type practiceMatchRow struct {
 // ── Builders ──────────────────────────────────────────────────────────────────
 
 func toPracticeMatchRow(e service.MatchEntry, userID int64) practiceMatchRow {
-	userAgentID := e.AgentA.ID
-	oppName := e.AgentB.Name
+	var userAgentID int64
+	var userAgentName, oppName string
 	if e.AgentB.UserID == userID {
 		userAgentID = e.AgentB.ID
+		userAgentName = e.AgentB.Name
 		oppName = e.AgentA.Name
+	} else {
+		userAgentID = e.AgentA.ID
+		userAgentName = e.AgentA.Name
+		oppName = e.AgentB.Name
 	}
-	outcome := "–"
+	outcome := "-"
 	switch e.Match.Status {
 	case "completed":
 		if e.Match.WinnerAgent == nil {
@@ -52,6 +58,7 @@ func toPracticeMatchRow(e service.MatchEntry, userID int64) practiceMatchRow {
 	}
 	return practiceMatchRow{
 		ID:      e.Match.ID,
+		Agent:   userAgentName,
 		Status:  e.Match.Status,
 		Outcome: outcome,
 		OppName: oppName,

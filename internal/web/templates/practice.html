@@ -83,6 +83,7 @@
         <thead>
           <tr>
             <th class="ps-3">#</th>
+            <th>Agent</th>
             <th>Opponent</th>
             <th>Outcome</th>
             <th>Duration</th>
@@ -93,6 +94,7 @@
           {{range .Matches}}
           <tr>
             <td class="text-soft ps-3">#{{.ID}}</td>
+            <td>{{.Agent}}</td>
             <td>{{.OppName}}</td>
             <td>
               {{if eq .Outcome "Win"}}
