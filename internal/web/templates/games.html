@@ -13,17 +13,17 @@
 <div class="d-flex gap-4" style="align-items: flex-start;">
 
   {{/* ── Sidebar: game list ── */}}
-  <div style="width:200px;flex-shrink:0;">
+  <div style="width:230px;flex-shrink:0;">
     <p class="eyebrow mb-2">Select game</p>
-    <div class="d-flex flex-column gap-2">
+    <div class="d-flex flex-column gap-2" id="game-sidebar">
       {{range $i, $g := .Games}}
-      <button class="btn btn-outline-light btn-sm text-start w-100{{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}} active{{end}}"
+      <button class="game-tab{{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}} active{{end}}"
               {{if and $.InitialGame (eq $.InitialGame.ID $g.ID)}}aria-current="true"{{end}}
               hx-get="/matches/{{$.MatchID}}/games/{{$g.ID}}/replay"
               hx-target="#replay-center"
               hx-swap="innerHTML">
-        <div class="fw-semibold">Game {{inc $i}}</div>
-        <div class="small text-soft mt-1">
+        <div class="gt-num">Game {{inc $i}}</div>
+        <div class="gt-meta">
           <span class="badge {{$g.ResultBadgeClass}}">{{$g.ResultLabel}}</span>
           <span class="ms-1">{{$g.MoveCount}} moves</span>
         </div>
@@ -33,7 +33,7 @@
   </div>
 
   {{/* ── Center: active replay ── */}}
-  <div id="replay-center" class="flex-grow-1">
+  <div id="replay-center" class="flex-grow-1 min-w-0">
     {{if .InitialGame}}
       {{template "game_replay" .InitialGame}}
     {{else}}
@@ -45,7 +45,7 @@
 
 <script>
 (function () {
-  const sidebar = document.querySelector('.d-flex.flex-column.gap-2');
+  const sidebar = document.getElementById('game-sidebar');
   if (!sidebar) return;
   document.getElementById('replay-center').addEventListener('htmx:afterSwap', function (e) {
     const gameId = e.detail.elt.querySelector('[data-game-id]')?.dataset.gameId;

@@ -12,7 +12,12 @@
 
 <div class="glass-card p-4">
   {{if .HasLog}}
-  <pre class="mb-0 p-3 rounded small font-monospace" style="background:rgba(0,0,0,.5);max-height:70vh;overflow:auto;line-height:1.6;">{{.Content}}</pre>
+  <div class="log-viewer">
+    <button class="btn btn-outline-light btn-sm log-copy-btn" id="log-copy-btn" aria-label="Copy log to clipboard">
+      <i class="bi bi-clipboard me-1"></i>Copy
+    </button>
+    <pre id="log-pre" class="mb-0 log-pre font-monospace">{{.Content}}</pre>
+  </div>
   {{else}}
   <div class="text-center py-5">
     <i class="bi bi-journal-x" style="font-size:2rem;color:rgba(230,231,238,.2);"></i>
@@ -20,4 +25,40 @@
   </div>
   {{end}}
 </div>
+
+{{if .HasLog}}
+<script>
+(function () {
+  const pre = document.getElementById('log-pre');
+  const copyBtn = document.getElementById('log-copy-btn');
+
+  // Color log levels
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function colorLine(line) {
+    const esc = escHtml(line);
+    if (/\b(ERROR|FATAL|PANIC|error|fatal|panic)\b/.test(line)) return '<span class="ll-error">' + esc + '</span>';
+    if (/\b(WARN|WARNING|warn|warning)\b/.test(line))           return '<span class="ll-warn">'  + esc + '</span>';
+    if (/\b(INFO|info)\b/.test(line))                           return '<span class="ll-info">'  + esc + '</span>';
+    if (/\b(DEBUG|TRACE|debug|trace)\b/.test(line))             return '<span class="ll-debug">' + esc + '</span>';
+    return esc;
+  }
+  const raw = pre.textContent;
+  pre.innerHTML = raw.split('\n').map(colorLine).join('\n');
+
+  // Copy button
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      navigator.clipboard?.writeText(raw).then(function () {
+        copyBtn.innerHTML = '<i class="bi bi-clipboard-check me-1"></i>Copied';
+        setTimeout(function () {
+          copyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy';
+        }, 2000);
+      });
+    });
+  }
+})();
+</script>
+{{end}}
 {{end}}

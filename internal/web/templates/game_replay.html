@@ -2,7 +2,7 @@
 <div class="glass-card p-4 mb-4" data-game-id="{{.ID}}">
 
   {{/* ── Header ── */}}
-  <div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <div>
       <h2 class="h5 mb-0">
         Game {{.ID}}
@@ -11,40 +11,138 @@
         </span>
       </h2>
     </div>
-    <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-outline-light btn-sm" aria-label="Previous move" onclick="stepGame('{{.ID}}',-1)">
-        <i class="bi bi-skip-start-fill" aria-hidden="true"></i>
-      </button>
-      <button id="play-btn-{{.ID}}" class="btn btn-outline-light btn-sm px-3" aria-label="Play" onclick="togglePlay('{{.ID}}')">
-        <i class="bi bi-play-fill" aria-hidden="true"></i>
-      </button>
-      <button class="btn btn-outline-light btn-sm" aria-label="Next move" onclick="stepGame('{{.ID}}',1)">
-        <i class="bi bi-skip-end-fill" aria-hidden="true"></i>
-      </button>
-      <span id="step-label-{{.ID}}" class="text-soft small ms-1" style="min-width:6ch;text-align:right;">0 / {{len .Moves}}</span>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Playback controls">
+        <button class="btn btn-outline-light" aria-label="Jump to start" onclick="stepGame('{{.ID}}', 0)">
+          <i class="bi bi-skip-backward-fill" aria-hidden="true"></i>
+        </button>
+        <button class="btn btn-outline-light" aria-label="Previous move" onclick="stepGame('{{.ID}}', -1)">
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <button id="play-btn-{{.ID}}" class="btn btn-outline-light px-3" aria-label="Play" onclick="togglePlay('{{.ID}}')">
+          <i class="bi bi-play-fill" aria-hidden="true"></i>
+        </button>
+        <button class="btn btn-outline-light" aria-label="Next move" onclick="stepGame('{{.ID}}', 1)">
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        <button class="btn btn-outline-light" aria-label="Jump to end" onclick="stepGame('{{.ID}}', 99999)">
+          <i class="bi bi-skip-forward-fill" aria-hidden="true"></i>
+        </button>
+      </div>
+      <button id="speed-btn-{{.ID}}" class="btn btn-outline-light btn-sm" onclick="cycleSpeed('{{.ID}}')" aria-label="Playback speed">1×</button>
+      <span id="step-label-{{.ID}}" class="text-soft small font-monospace" style="min-width:5.5ch;text-align:right;">0 / {{len .Moves}}</span>
     </div>
   </div>
 
-  <div class="row g-4">
+  {{/* ── Seek bar ── */}}
+  {{if .Moves}}
+  <div class="mb-4 px-1">
+    <input type="range" class="seek-bar w-100" id="seek-{{.ID}}"
+           min="0" max="{{len .Moves}}" value="0" aria-label="Seek through moves">
+  </div>
+  {{end}}
 
-    {{/* ── Board ── */}}
-    <div class="col-lg-5">
-      <div id="board-{{.ID}}" aria-hidden="true"></div>
-      <div class="d-flex gap-3 mt-3 small text-soft">
-        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/></svg>Black — {{.BlackPlayer}}</span>
-        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#e0e0e0" stroke="rgba(0,0,0,.45)" stroke-width="1"/></svg>White — {{.WhitePlayer}}</span>
-        <span><svg width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="7" cy="7" r="6" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/><circle cx="7" cy="7" r="3" fill="#e53935"/></svg>Last move</span>
+  {{/* ── Board + Recap ── */}}
+  <div class="row g-4 flex-nowrap">
+
+    {{/* Board */}}
+    <div class="col-auto">
+      <div id="board-{{.ID}}" aria-hidden="true" style="display:inline-block;"></div>
+      <div class="d-flex gap-3 mt-3 small text-soft flex-wrap">
+        <span><svg width="12" height="12" style="vertical-align:middle;margin-right:4px;"><circle cx="6" cy="6" r="5" fill="#1a1a1a" stroke="rgba(255,255,255,.3)" stroke-width="1"/></svg>{{.BlackPlayer}}</span>
+        <span><svg width="12" height="12" style="vertical-align:middle;margin-right:4px;"><circle cx="6" cy="6" r="5" fill="#e0e0e0" stroke="rgba(0,0,0,.4)" stroke-width="1"/></svg>{{.WhitePlayer}}</span>
+        <span><svg width="12" height="12" style="vertical-align:middle;margin-right:4px;"><circle cx="6" cy="6" r="5" fill="#1a1a1a" stroke="rgba(255,255,255,.25)" stroke-width="1"/><circle cx="6" cy="6" r="2.5" fill="#e53935"/></svg>Last move</span>
       </div>
     </div>
 
-    {{/* ── Move list ── */}}
-    <div class="col-lg-7">
-      {{if .Moves}}
-      <div id="movelist-{{.ID}}" class="table-responsive" style="max-height:340px;overflow-y:auto;">
+    {{/* Recap panel */}}
+    <div class="col" style="min-width:0;">
+      <div class="recap-panel">
+
+        {{/* Current move — JS-driven */}}
+        <div>
+          <p class="recap-section-label">Current move</p>
+          <div id="recap-move-{{.ID}}" class="recap-inner">
+            <p class="text-soft small mb-0 text-center py-1">
+              <i class="bi bi-play-circle me-1"></i>Press play or use <kbd>→</kbd> to step through
+            </p>
+          </div>
+        </div>
+
+        {{/* Players — static */}}
+        <div>
+          <p class="recap-section-label">Players</p>
+          <div class="recap-inner d-flex flex-column gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <svg width="12" height="12" style="flex-shrink:0;"><circle cx="6" cy="6" r="5" fill="#1a1a1a" stroke="rgba(255,255,255,.3)" stroke-width="1"/></svg>
+              <span class="small text-soft">Black</span>
+              <span class="ms-auto small fw-semibold text-end">{{.BlackPlayer}}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <svg width="12" height="12" style="flex-shrink:0;"><circle cx="6" cy="6" r="5" fill="#e0e0e0" stroke="rgba(0,0,0,.4)" stroke-width="1"/></svg>
+              <span class="small text-soft">White</span>
+              <span class="ms-auto small fw-semibold text-end">{{.WhitePlayer}}</span>
+            </div>
+          </div>
+        </div>
+
+        {{/* Game stats — static */}}
+        <div>
+          <p class="recap-section-label">Game stats</p>
+          <div class="recap-inner d-flex flex-column gap-2">
+            <div class="d-flex align-items-center justify-content-between small">
+              <span class="text-soft">Total moves</span>
+              <span class="fw-semibold">{{len .Moves}}</span>
+            </div>
+            <div class="d-flex align-items-center justify-content-between small">
+              <span class="text-soft">Result</span>
+              <span class="badge {{.ResultBadgeClass}} ms-auto">{{if .ResultHasTrophy}}<i class="bi bi-trophy-fill me-1"></i>{{end}}{{.ResultLabel}}</span>
+            </div>
+          </div>
+        </div>
+
+        {{/* Placeholder — move analysis */}}
+        <div>
+          <p class="recap-section-label" style="opacity:.5;">Move analysis <span style="font-size:.85em;">(planned)</span></p>
+          <div class="recap-inner recap-placeholder d-flex flex-column gap-2">
+            <div class="d-flex align-items-center gap-2 small">
+              <i class="bi bi-graph-up text-soft"></i>
+              <span class="text-soft">Threat score</span>
+              <span class="ms-auto" style="color:rgba(230,231,238,.25);">—</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 small">
+              <i class="bi bi-lightning text-soft"></i>
+              <span class="text-soft">Best response</span>
+              <span class="ms-auto" style="color:rgba(230,231,238,.25);">—</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 small">
+              <i class="bi bi-clock-history text-soft"></i>
+              <span class="text-soft">Move time</span>
+              <span class="ms-auto" style="color:rgba(230,231,238,.25);">not in payload</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>{{/* end row */}}
+
+  {{/* ── Moves drawer (collapsed) ── */}}
+  {{if .Moves}}
+  <details class="moves-drawer" id="moves-drawer-{{.ID}}">
+    <summary>
+      <i class="bi bi-list-ol" aria-hidden="true"></i>
+      All moves
+      <span class="text-soft" style="font-size:.85em;">({{len .Moves}})</span>
+      <i class="bi bi-chevron-down drawer-chevron" aria-hidden="true"></i>
+    </summary>
+    <div class="drawer-body">
+      <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead style="position:sticky;top:0;background:rgba(7,8,13,0.95);z-index:1;">
             <tr>
-              <th class="ps-2">#</th>
+              <th class="ps-3">#</th>
               <th>Player</th>
               <th>Position</th>
               <th>Status</th>
@@ -54,7 +152,7 @@
           <tbody>
             {{range .Moves}}
             <tr id="mrow-{{$.ID}}-{{.Num}}" style="transition:background 120ms ease;">
-              <td class="ps-2 text-soft">{{.Num}}</td>
+              <td class="ps-3 text-soft">{{.Num}}</td>
               <td class="small">{{.Player}}</td>
               <td class="font-monospace small">{{if .Pos}}{{.Pos}}{{else}}<span class="text-soft">–</span>{{end}}</td>
               <td>
@@ -72,11 +170,10 @@
           </tbody>
         </table>
       </div>
-      {{else}}
-      <p class="text-soft"><i class="bi bi-inbox me-1"></i>No moves recorded for this game.</p>
-      {{end}}
     </div>
-  </div>
+  </details>
+  {{end}}
+
 </div>
 
 <script>
@@ -84,158 +181,178 @@
   const GID   = "{{.ID}}";
   const moves = {{.MovesJS}};
   const SIZE  = 8;
-  const CELL  = 38;
-  const PAD   = 30;
+  const CELL  = 54;
+  const PAD   = 28;
   const COLS  = ['A','B','C','D','E','F','G','H'];
-
-  // ── Init SVG board ──────────────────────────────────────────────────────────
   const W = PAD + SIZE * CELL;
   const H = PAD + SIZE * CELL;
+
+  // ── Board ───────────────────────────────────────────────────────────────────
   const draw = SVG().addTo('#board-' + GID).size(W, H);
 
+  draw.rect(SIZE * CELL, SIZE * CELL)
+    .move(PAD, PAD).radius(4)
+    .fill('rgba(6,8,14,.82)')
+    .stroke({ color: 'rgba(255,255,255,.07)', width: 1 });
+
+  for (let i = 0; i <= SIZE; i++) {
+    draw.line(PAD + i*CELL, PAD, PAD + i*CELL, PAD + SIZE*CELL)
+      .stroke({ color: 'rgba(255,255,255,.09)', width: 1 });
+    draw.line(PAD, PAD + i*CELL, PAD + SIZE*CELL, PAD + i*CELL)
+      .stroke({ color: 'rgba(255,255,255,.09)', width: 1 });
+  }
   COLS.forEach(function (c, i) {
-    draw.text(c).attr({
-      x: PAD + i * CELL + CELL / 2, y: PAD / 2,
-      'text-anchor': 'middle', 'dominant-baseline': 'central',
-      'font-size': '10', 'font-family': 'monospace',
-      fill: 'rgba(230,231,238,.3)'
-    });
+    draw.text(c).attr({ x: PAD + i*CELL + CELL/2, y: PAD/2,
+      'text-anchor':'middle','dominant-baseline':'central','font-size':'11','font-family':'monospace',fill:'rgba(230,231,238,.4)' });
   });
   for (let i = 0; i < SIZE; i++) {
-    draw.text(String(i + 1)).attr({
-      x: PAD / 2, y: PAD + i * CELL + CELL / 2,
-      'text-anchor': 'middle', 'dominant-baseline': 'central',
-      'font-size': '10', 'font-family': 'monospace',
-      fill: 'rgba(230,231,238,.3)'
-    });
-  }
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      draw.rect(CELL, CELL)
-        .move(PAD + x * CELL, PAD + y * CELL)
-        .fill('rgba(255,255,255,.025)')
-        .stroke({ color: 'rgba(255,255,255,.07)', width: 1 });
-    }
+    draw.text(String(i+1)).attr({ x: PAD/2, y: PAD + i*CELL + CELL/2,
+      'text-anchor':'middle','dominant-baseline':'central','font-size':'11','font-family':'monospace',fill:'rgba(230,231,238,.4)' });
   }
 
-  // ── Stone gradients (defined once) ─────────────────────────────────────────
-  // Black stone plays first (PlayerA), White plays second (PlayerB)
   const blackGrad = draw.gradient('radial', function (add) {
-    add.stop(0, '#4a4a4a');
-    add.stop(1, '#080808');
-  }).attr({ cx: '36%', cy: '30%', r: '68%', fx: '32%', fy: '26%' });
+    add.stop(0, '#4a4a4a'); add.stop(1, '#080808');
+  }).attr({ cx:'36%',cy:'30%',r:'68%',fx:'32%',fy:'26%' });
 
   const whiteGrad = draw.gradient('radial', function (add) {
-    add.stop(0, '#ffffff');
-    add.stop(1, '#c0c0c0');
-  }).attr({ cx: '36%', cy: '30%', r: '68%', fx: '32%', fy: '26%' });
+    add.stop(0, '#ffffff'); add.stop(1, '#c0c0c0');
+  }).attr({ cx:'36%',cy:'30%',r:'68%',fx:'32%',fy:'26%' });
 
   const pieces = draw.group();
 
-  // ── Board renderer ──────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Recap ───────────────────────────────────────────────────────────────────
+  const recapEl = document.getElementById('recap-move-' + GID);
+
+  function updateRecap(upTo) {
+    if (!recapEl) return;
+    if (upTo === 0) {
+      recapEl.innerHTML = '<p class="text-soft small mb-0 text-center py-1"><i class="bi bi-play-circle me-1"></i>Press play or use <kbd>→</kbd> to step through</p>';
+      return;
+    }
+    const m = moves[upTo - 1];
+    const isBlack  = m.mark === 'B';
+    const colName  = (m.x >= 1 && m.x <= 8) ? COLS[m.x - 1] : m.x;
+    const stoneClr = isBlack ? '#1a1a1a' : '#e0e0e0';
+    const stoneStr = isBlack ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.4)';
+    recapEl.innerHTML =
+      '<div class="d-flex align-items-center gap-2 mb-3">' +
+        '<svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="' + stoneClr + '" stroke="' + stoneStr + '" stroke-width="1.5"/></svg>' +
+        '<span class="fw-semibold">' + escHtml(m.player || (isBlack ? 'Black' : 'White')) + '</span>' +
+        '<span class="text-soft small">' + (isBlack ? 'Black' : 'White') + '</span>' +
+      '</div>' +
+      '<div class="row g-2 text-center">' +
+        '<div class="col-4"><div class="recap-stat-box"><div class="small text-soft mb-1">Move</div>' +
+          '<div class="fw-semibold">' + upTo + ' <span class="text-soft" style="font-size:.75em;">/ ' + moves.length + '</span></div></div></div>' +
+        '<div class="col-4"><div class="recap-stat-box"><div class="small text-soft mb-1">Position</div>' +
+          '<div class="fw-semibold font-monospace">' + colName + ',' + m.y + '</div></div></div>' +
+        '<div class="col-4"><div class="recap-stat-box"><div class="small text-soft mb-1">Time</div>' +
+          '<div class="fw-semibold text-soft" title="not in payload">—</div></div></div>' +
+      '</div>';
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const seekEl = document.getElementById('seek-' + GID);
+
   function render(upTo) {
     pieces.clear();
-
     const board = Array.from({ length: SIZE }, () => Array(SIZE).fill(''));
     for (let i = 0; i < upTo && i < moves.length; i++) {
       const m = moves[i];
-      if (m.x >= 1 && m.x <= SIZE && m.y >= 1 && m.y <= SIZE) {
-        board[m.y - 1][m.x - 1] = m.mark;
-      }
+      if (m.x >= 1 && m.x <= SIZE && m.y >= 1 && m.y <= SIZE) board[m.y-1][m.x-1] = m.mark;
     }
-    const last = upTo > 0 && upTo <= moves.length ? moves[upTo - 1] : null;
+    const last = upTo > 0 && upTo <= moves.length ? moves[upTo-1] : null;
 
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const mark = board[y][x];
         if (!mark) continue;
-
         const isX    = mark === 'B';
-        const isLast = last && last.x === x + 1 && last.y === y + 1;
-        const cx     = PAD + x * CELL + CELL / 2;
-        const cy     = PAD + y * CELL + CELL / 2;
-        const r      = (CELL - 8) / 2;
-
-        const g = pieces.group();
-
-        // Stone with radial gradient
-        g.circle(r * 2).center(cx, cy)
+        const isLast = last && last.x === x+1 && last.y === y+1;
+        const cx = PAD + x*CELL + CELL/2;
+        const cy = PAD + y*CELL + CELL/2;
+        const r  = (CELL - 10) / 2;
+        const g  = pieces.group();
+        g.circle(r*2).center(cx,cy)
           .fill(isX ? blackGrad : whiteGrad)
-          .stroke({ color: isX ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.45)', width: 1 });
-
-        // Last-move red dot at center
+          .stroke({ color: isX ? 'rgba(255,255,255,.22)' : 'rgba(0,0,0,.4)', width: 1 });
         if (isLast) {
-          g.circle(6).center(cx, cy).fill('#e53935');
-        }
-
-        if (isLast) {
-          g.attr('opacity', 0);
-          g.animate(200, 0, 'now').attr('opacity', 1);
+          g.circle(7).center(cx,cy).fill('#e53935');
+          g.attr('opacity',0); g.animate(180,0,'now').attr('opacity',1);
         }
       }
     }
 
-    document.getElementById('step-label-' + GID).textContent = upTo + ' / ' + moves.length;
+    document.getElementById('step-label-'+GID).textContent = upTo + ' / ' + moves.length;
+    if (seekEl) seekEl.value = upTo;
+    updateRecap(upTo);
 
-    document.querySelectorAll('[id^="mrow-' + GID + '-"]').forEach(function (r) {
-      r.style.background = '';
-    });
-    if (upTo > 0) {
-      const row = document.getElementById('mrow-' + GID + '-' + upTo);
-      if (row) {
-        row.style.background = 'rgba(99,102,241,.18)';
-        row.scrollIntoView({ block: 'nearest' });
-      }
+    // Sync move row in drawer (only if drawer open to avoid layout thrashing)
+    const drawer = document.getElementById('moves-drawer-' + GID);
+    document.querySelectorAll('[id^="mrow-'+GID+'-"]').forEach(function (r) { r.style.background=''; });
+    if (upTo > 0 && drawer && drawer.open) {
+      const row = document.getElementById('mrow-'+GID+'-'+upTo);
+      if (row) { row.style.background='rgba(99,102,241,.18)'; row.scrollIntoView({block:'nearest'}); }
     }
   }
 
   // ── Controls ────────────────────────────────────────────────────────────────
-  let step    = 0;
-  let playing = false;
-  let timer   = null;
+  let step=0, playing=false, timer=null, speedIdx=1;
+  const speeds = [0.5, 1, 2, 4];
+  const BASE = 700;
 
-  window['stepGame']   = window['stepGame']   || function (gid, d) { window['_stepGame_'   + gid](d); };
-  window['togglePlay'] = window['togglePlay'] || function (gid)    { window['_togglePlay_' + gid](); };
+  function updatePlayBtn() {
+    const btn = document.getElementById('play-btn-'+GID);
+    if (playing) { btn.innerHTML='<i class="bi bi-pause-fill" aria-hidden="true"></i>'; btn.setAttribute('aria-label','Pause'); }
+    else         { btn.innerHTML='<i class="bi bi-play-fill"  aria-hidden="true"></i>'; btn.setAttribute('aria-label','Play'); }
+  }
+  function tick() {
+    if (step >= moves.length) { playing=false; updatePlayBtn(); clearInterval(timer); return; }
+    step++; render(step);
+  }
 
-  window['_stepGame_' + GID] = function (delta) {
-    if (delta === 0)     { step = 0; }
-    else if (delta === 99999) { step = moves.length; }
-    else { step = Math.max(0, Math.min(moves.length, step + delta)); }
+  window['stepGame']   = window['stepGame']   || function (gid,d) { window['_stepGame_'  +gid](d); };
+  window['togglePlay'] = window['togglePlay'] || function (gid)   { window['_togglePlay_'+gid](); };
+  window['cycleSpeed'] = window['cycleSpeed'] || function (gid)   { window['_cycleSpeed_'+gid](); };
+
+  window['_stepGame_'+GID] = function (delta) {
+    if (delta===0)       step = 0;
+    else if (delta===99999) step = moves.length;
+    else step = Math.max(0, Math.min(moves.length, step+delta));
     render(step);
   };
-
-  window['_togglePlay_' + GID] = function () {
-    playing = !playing;
-    const btn = document.getElementById('play-btn-' + GID);
-    if (playing) {
-      btn.innerHTML = '<i class="bi bi-pause-fill" aria-hidden="true"></i>';
-      btn.setAttribute('aria-label', 'Pause');
-      if (step >= moves.length) step = 0;
-      timer = setInterval(function () {
-        if (step >= moves.length) {
-          playing = false;
-          btn.innerHTML = '<i class="bi bi-play-fill" aria-hidden="true"></i>';
-          btn.setAttribute('aria-label', 'Play');
-          clearInterval(timer);
-          return;
-        }
-        step++;
-        render(step);
-      }, 700);
-    } else {
-      clearInterval(timer);
-      btn.innerHTML = '<i class="bi bi-play-fill" aria-hidden="true"></i>';
-      btn.setAttribute('aria-label', 'Play');
-    }
+  window['_togglePlay_'+GID] = function () {
+    playing = !playing; updatePlayBtn();
+    if (playing) { if (step>=moves.length) step=0; timer=setInterval(tick, BASE/speeds[speedIdx]); }
+    else clearInterval(timer);
+  };
+  window['_cycleSpeed_'+GID] = function () {
+    speedIdx = (speedIdx+1) % speeds.length;
+    document.getElementById('speed-btn-'+GID).textContent = speeds[speedIdx]+'×';
+    if (playing) { clearInterval(timer); timer=setInterval(tick, BASE/speeds[speedIdx]); }
   };
 
-  const card = document.querySelector('[data-game-id="' + GID + '"]');
-  card.setAttribute('tabindex', '0');
+  if (seekEl) {
+    seekEl.addEventListener('input', function () {
+      step = parseInt(this.value, 10);
+      if (playing) { clearInterval(timer); playing=false; updatePlayBtn(); }
+      render(step);
+    });
+  }
+
+  // Keyboard (card focused)
+  const card = document.querySelector('[data-game-id="'+GID+'"]');
+  card.setAttribute('tabindex','0');
   card.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); window['_stepGame_' + GID](1); }
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); window['_stepGame_' + GID](-1); }
-    if (e.key === 'Home')       { e.preventDefault(); window['_stepGame_' + GID](0); }
-    if (e.key === 'End')        { e.preventDefault(); window['_stepGame_' + GID](99999); }
+    if (e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); window['_stepGame_'+GID](1); }
+    if (e.key==='ArrowLeft')               { e.preventDefault(); window['_stepGame_'+GID](-1); }
+    if (e.key==='Home')                    { e.preventDefault(); window['_stepGame_'+GID](0); }
+    if (e.key==='End')                     { e.preventDefault(); window['_stepGame_'+GID](99999); }
+    if (e.key==='p'||e.key==='P')          { e.preventDefault(); window['_togglePlay_'+GID](); }
   });
 
   render(0);

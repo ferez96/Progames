@@ -2,13 +2,15 @@
 <section class="row justify-content-center align-items-center" style="min-height: 64vh;">
   <div class="col-md-6 col-lg-4">
     <div class="text-center mb-4">
-      <div style="font-size:2.4rem;margin-bottom:.5rem;">🤖</div>
+      <div class="brand-icon">
+        <i class="bi bi-robot"></i>
+      </div>
       <h1 class="h-display display-5 mb-1">Welcome back</h1>
       <p class="text-soft mb-0">Ready to run some bots?</p>
     </div>
     <div class="glass-card p-4">
       {{with .Error}}
-      <div class="alert alert-danger py-2 d-flex align-items-center gap-2">
+      <div class="alert alert-danger py-2 d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>{{.}}
       </div>
       {{end}}
@@ -22,8 +24,13 @@
         </div>
         <div>
           <label for="password" class="form-label text-soft small mb-1">Password</label>
-          <input id="password" class="form-control form-control-lg" name="password" type="password"
-                 placeholder="••••••••" autocomplete="current-password" required>
+          <div class="pwd-wrap">
+            <input id="password" class="form-control form-control-lg" name="password" type="password"
+                   placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="pwd-toggle" id="pwd-toggle-login" aria-label="Show">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
         </div>
         <button class="btn btn-primary btn-lg mt-1" type="submit">
           <span class="htmx-indicator spinner-border spinner-border-sm me-2"></span>
@@ -36,4 +43,17 @@
     </div>
   </div>
 </section>
+<script>
+(function () {
+  const btn = document.getElementById('pwd-toggle-login');
+  if (!btn) return;
+  const inp = document.getElementById('password');
+  btn.addEventListener('click', function () {
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.querySelector('i').className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    btn.setAttribute('aria-label', show ? 'Hide' : 'Show');
+  });
+})();
+</script>
 {{end}}

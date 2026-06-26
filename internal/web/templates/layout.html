@@ -11,7 +11,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@svgdotjs/svg.js@3/dist/svg.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@svgdotjs/svg.js@3/dist/svg.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <style>
     :root {
       --bg-base: #07080d;
@@ -257,26 +258,199 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+    /* ===== Skip to content ===== */
+    .skip-link {
+      position: fixed; top: -100%; left: 1rem; z-index: 9999;
+      background: var(--accent-1); color: #fff;
+      padding: .4rem .9rem; border-radius: 0 0 8px 8px;
+      font-size: .85rem; font-weight: 600;
+      transition: top 120ms ease;
+      text-decoration: none;
+    }
+    .skip-link:focus { top: 0; color: #fff; }
+
+    /* ===== Global loading bar ===== */
+    #loading-bar {
+      position: fixed; top: 0; left: 0; height: 2px; width: 0;
+      z-index: 9998;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3));
+      opacity: 0;
+      pointer-events: none;
+      transition: width 300ms ease, opacity 250ms ease;
+    }
+
+    /* ===== Focus visible (accessibility) ===== */
+    :focus-visible {
+      outline: 2px solid var(--accent-1);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ===== Toast notifications ===== */
+    #toast-root { position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 1080; display: flex; flex-direction: column; gap: .5rem; min-width: 260px; max-width: 360px; pointer-events: none; }
+    .app-toast {
+      display: flex; align-items: flex-start; gap: .65rem;
+      padding: .75rem 1rem;
+      background: rgba(20,22,30,.85);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      backdrop-filter: blur(18px) saturate(160%);
+      box-shadow: 0 8px 32px -8px rgba(0,0,0,.7);
+      color: #e6e7ee; font-size: .875rem;
+      pointer-events: all;
+      animation: toastIn 220ms ease forwards;
+    }
+    .app-toast.toast-out { animation: toastOut 200ms ease forwards; }
+    .app-toast .toast-icon { flex-shrink: 0; font-size: 1.1rem; line-height: 1.4; }
+    .app-toast.toast-success { border-color: rgba(34,211,238,.3); }
+    .app-toast.toast-success .toast-icon { color: var(--accent-3); }
+    .app-toast.toast-error { border-color: rgba(239,68,68,.3); }
+    .app-toast.toast-error .toast-icon { color: #f87171; }
+    .app-toast.toast-warn { border-color: rgba(245,158,11,.3); }
+    .app-toast.toast-warn .toast-icon { color: #fbbf24; }
+    @keyframes toastIn  { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+    @keyframes toastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(24px); } }
+
+    /* ===== Mobile navbar toggler ===== */
+    .navbar-toggler { border-color: rgba(255,255,255,.18); }
+    .navbar-toggler:focus { box-shadow: 0 0 0 .2rem rgba(99,102,241,.35); }
+    .navbar-toggler-icon { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230,231,238,0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); }
+
+    /* ===== Brand icon badge (auth pages) ===== */
+    .brand-icon {
+      width: 64px; height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem; color: #fff;
+      box-shadow: 0 8px 32px -8px rgba(99,102,241,.65);
+      margin: 0 auto .75rem;
+    }
+
+    /* ===== Password toggle ===== */
+    .pwd-wrap { position: relative; }
+    .pwd-toggle {
+      position: absolute; top: 50%; right: .75rem; transform: translateY(-50%);
+      background: transparent; border: none; padding: .2rem .3rem;
+      color: rgba(230,231,238,.45); cursor: pointer; line-height: 1;
+      transition: color 130ms ease;
+    }
+    .pwd-toggle:hover { color: #e6e7ee; }
+    .pwd-wrap .form-control { padding-right: 2.6rem; }
+
+    /* ===== Seek slider (game replay) ===== */
+    input[type=range].seek-bar {
+      flex: 1; min-width: 60px;
+      accent-color: var(--accent-1);
+      cursor: pointer;
+      height: 4px;
+    }
+
+    /* ===== Recap stat boxes ===== */
+    .recap-stat-box {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px;
+      padding: .5rem .25rem;
+    }
+    .recap-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .recap-section-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .14em; color: rgba(230,231,238,.45); margin-bottom: .5rem; }
+    .recap-inner { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: .85rem 1rem; }
+    .recap-placeholder { border-style: dashed !important; opacity: .45; }
+
+    /* ===== Moves drawer (bottom collapsed) ===== */
+    .moves-drawer { margin-top: 1.5rem; }
+    .moves-drawer > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      color: #e6e7ee;
+      font-size: .875rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      transition: background 140ms ease, border-radius 140ms ease;
+    }
+    .moves-drawer > summary::-webkit-details-marker { display: none; }
+    .moves-drawer > summary .drawer-chevron { margin-left: auto; transition: transform 200ms ease; }
+    .moves-drawer[open] > summary {
+      border-radius: 10px 10px 0 0;
+      background: rgba(255,255,255,.06);
+    }
+    .moves-drawer[open] > summary .drawer-chevron { transform: rotate(180deg); }
+    .moves-drawer .drawer-body {
+      border: 1px solid rgba(255,255,255,.08);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      overflow: hidden;
+    }
+
+    /* ===== Game sidebar tabs ===== */
+    .game-tab {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      color: #e6e7ee;
+      transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      padding: .65rem .85rem;
+    }
+    .game-tab:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); }
+    .game-tab.active { background: rgba(99,102,241,.18); border-color: rgba(99,102,241,.42); box-shadow: 0 0 0 1px rgba(99,102,241,.2) inset; }
+    .game-tab .gt-num { font-weight: 600; font-size: .875rem; }
+    .game-tab .gt-meta { font-size: .78rem; color: var(--text-soft); margin-top: .2rem; }
+
+    /* ===== Log viewer ===== */
+    .log-viewer { position: relative; }
+    .log-copy-btn {
+      position: absolute; top: .65rem; right: .65rem;
+      opacity: 0; transition: opacity 150ms ease;
+    }
+    .log-viewer:hover .log-copy-btn,
+    .log-viewer:focus-within .log-copy-btn { opacity: 1; }
+    .log-pre { background: rgba(0,0,0,.5); border-radius: 8px; padding: 1rem 1rem; max-height: 70vh; overflow: auto; line-height: 1.65; font-size: .8rem; }
+    .ll-error { color: #f87171; }
+    .ll-warn  { color: #fbbf24; }
+    .ll-info  { color: #67e8f9; }
+    .ll-debug { color: rgba(230,231,238,.4); }
   </style>
 </head>
 <body hx-boost="true">
+  <a class="skip-link" href="#app">Skip to content</a>
+  <div id="loading-bar" role="progressbar" aria-hidden="true"></div>
+  <div id="toast-root" aria-live="polite" aria-atomic="false"></div>
   <div class="aurora-c" aria-hidden="true"></div>
 
   <header class="topbar" id="topbar">
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <a class="navbar-brand brand fs-4" href="/" hx-boost="false">Progames</a>
-        <div class="navbar-nav ms-auto gap-2">
-          {{if .Authenticated}}
-          <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">Practice</a>
-          <form method="post" action="/api/logout" hx-post="/api/logout" hx-swap="none" class="d-inline">
-            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-            <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
-          </form>
-          {{else}}
-          <a class="btn btn-outline-light btn-sm" href="/login" hx-get="/login" hx-target="#app" hx-push-url="true">Login</a>
-          <a class="btn btn-primary btn-sm" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Sign up</a>
-          {{end}}
+        <button class="navbar-toggler border-0 ms-auto" type="button"
+                data-bs-toggle="collapse" data-bs-target="#main-nav"
+                aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="main-nav">
+          <div class="navbar-nav ms-auto gap-2 mt-2 mt-lg-0">
+            {{if .Authenticated}}
+            <a class="btn btn-outline-light btn-sm" href="/practice" hx-get="/practice" hx-target="#app" hx-push-url="true">Practice</a>
+            <form method="post" action="/api/logout" hx-post="/api/logout" hx-swap="none" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+              <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
+            </form>
+            {{else}}
+            <a class="btn btn-outline-light btn-sm" href="/login" hx-get="/login" hx-target="#app" hx-push-url="true">Login</a>
+            <a class="btn btn-primary btn-sm" href="/signup" hx-get="/signup" hx-target="#app" hx-push-url="true">Sign up</a>
+            {{end}}
+          </div>
         </div>
       </div>
     </nav>
@@ -327,6 +501,61 @@
       }
       bindTilt(document);
       document.body.addEventListener('htmx:afterSwap', (e) => bindTilt(e.target));
+
+      // ===== Loading bar =====
+      const bar = document.getElementById('loading-bar');
+      let barTimer;
+      document.body.addEventListener('htmx:beforeRequest', () => {
+        clearTimeout(barTimer);
+        bar.style.transition = 'width 300ms ease, opacity 0ms';
+        bar.style.opacity = '1';
+        bar.style.width = '40%';
+        barTimer = setTimeout(() => { bar.style.width = '70%'; }, 300);
+      });
+      document.body.addEventListener('htmx:afterRequest', () => {
+        clearTimeout(barTimer);
+        bar.style.transition = 'width 200ms ease, opacity 350ms ease 200ms';
+        bar.style.width = '100%';
+        barTimer = setTimeout(() => {
+          bar.style.opacity = '0';
+          barTimer = setTimeout(() => { bar.style.transition = 'none'; bar.style.width = '0'; }, 360);
+        }, 200);
+      });
+
+      // ===== Toast system =====
+      // Server-side: send HX-Trigger: {"toast":{"message":"Saved","type":"success"}}
+      // Client-side: call window.showToast("message", "success"|"error"|"warn")
+      const toastRoot = document.getElementById('toast-root');
+      const toastIcons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warn: 'bi-exclamation-triangle-fill' };
+
+      window.showToast = function (message, type) {
+        type = type || 'success';
+        const el = document.createElement('div');
+        el.className = 'app-toast toast-' + type;
+        el.innerHTML = '<i class="bi ' + (toastIcons[type] || toastIcons.success) + ' toast-icon"></i><span>' + message + '</span>';
+        toastRoot.appendChild(el);
+        setTimeout(() => {
+          el.classList.add('toast-out');
+          el.addEventListener('animationend', () => el.remove(), { once: true });
+        }, 3800);
+      };
+
+      document.body.addEventListener('htmx:afterRequest', (evt) => {
+        const trigger = evt.detail.xhr.getResponseHeader('HX-Trigger');
+        if (!trigger) return;
+        try {
+          const data = JSON.parse(trigger);
+          if (data.toast) window.showToast(data.toast.message, data.toast.type);
+        } catch (_) {}
+      });
+
+      // Close mobile nav on HTMX navigation
+      document.body.addEventListener('htmx:beforeRequest', () => {
+        const nav = document.getElementById('main-nav');
+        if (nav && nav.classList.contains('show') && window.bootstrap) {
+          window.bootstrap.Collapse.getInstance(nav)?.hide();
+        }
+      });
     })();
   </script>
 </body>
